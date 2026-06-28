@@ -24,6 +24,7 @@ tournament_stage = postgresql.ENUM(
     "semi_final",
     "final",
     name="tournament_stage",
+    create_type=False,
 )
 match_status = postgresql.ENUM(
     "scheduled",
@@ -32,24 +33,46 @@ match_status = postgresql.ENUM(
     "completed",
     "cancelled",
     name="match_status",
+    create_type=False,
 )
-pool_role = postgresql.ENUM("owner", "participant", name="pool_role")
-participant_status = postgresql.ENUM("active", "removed", name="participant_status")
-next_slot = postgresql.ENUM("home", "away", name="next_slot")
-prediction_status = postgresql.ENUM("editable", "locked", "scored", name="prediction_status")
+pool_role = postgresql.ENUM(
+    "owner",
+    "participant",
+    name="pool_role",
+    create_type=False,
+)
+participant_status = postgresql.ENUM(
+    "active",
+    "removed",
+    name="participant_status",
+    create_type=False,
+)
+next_slot = postgresql.ENUM("home", "away", name="next_slot", create_type=False)
+prediction_status = postgresql.ENUM(
+    "editable",
+    "locked",
+    "scored",
+    name="prediction_status",
+    create_type=False,
+)
 
 
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
     op.execute("CREATE EXTENSION IF NOT EXISTS citext")
 
-    bind = op.get_bind()
-    tournament_stage.create(bind, checkfirst=True)
-    match_status.create(bind, checkfirst=True)
-    pool_role.create(bind, checkfirst=True)
-    participant_status.create(bind, checkfirst=True)
-    next_slot.create(bind, checkfirst=True)
-    prediction_status.create(bind, checkfirst=True)
+    _create_enum_if_not_exists(
+        "tournament_stage",
+        ["round_of_32", "round_of_16", "quarter_final", "semi_final", "final"],
+    )
+    _create_enum_if_not_exists(
+        "match_status",
+        ["scheduled", "locked", "in_progress", "completed", "cancelled"],
+    )
+    _create_enum_if_not_exists("pool_role", ["owner", "participant"])
+    _create_enum_if_not_exists("participant_status", ["active", "removed"])
+    _create_enum_if_not_exists("next_slot", ["home", "away"])
+    _create_enum_if_not_exists("prediction_status", ["editable", "locked", "scored"])
 
     op.create_table(
         "users",
@@ -256,3 +279,19 @@ def downgrade() -> None:
     match_status.drop(bind, checkfirst=True)
     tournament_stage.drop(bind, checkfirst=True)
 
+
+def _create_enum_if_not_exists(name: str, values: list[str]) -> None:
+    quoted_values = ", ".join(f"'{value}'" for value in values)
+    op.execute(
+        sa.text(
+            f"""
+            DO $$
+            BEGIN
+                CREATE TYPE {name} AS ENUM ({quoted_values});
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END
+            $$;
+            """
+        )
+    )

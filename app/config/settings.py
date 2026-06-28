@@ -1,8 +1,8 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -22,8 +22,10 @@ class Settings(BaseSettings):
     google_redirect_uri: str = ""
     frontend_base_url: str = "http://localhost:8501"
     backend_base_url: str = "http://localhost:8000"
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8501"])
-    admin_emails: list[str] = Field(default_factory=list)
+    allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:8501"]
+    )
+    admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
     scoring_version: str = "mvp-2026-v1"
     log_level: str = "INFO"
 
