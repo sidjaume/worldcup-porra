@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from uuid import UUID
 
 import httpx
@@ -124,32 +124,39 @@ class AuthService:
         if not self.settings.google_client_id or not self.settings.google_client_secret:
             raise ValidationError("Google OAuth is not configured.")
 
-        with httpx.Client(timeout=10) as client:
-            token_response = client.post(
-                self.google_token_url,
-                data={
-                    "code": code,
-                    "client_id": self.settings.google_client_id,
-                    "client_secret": self.settings.google_client_secret,
-                    "redirect_uri": self.settings.google_redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-            )
-            token_response.raise_for_status()
-            access_token = token_response.json()["access_token"]
-            user_response = client.get(
-                self.google_userinfo_url,
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            user_response.raise_for_status()
-            identity = user_response.json()
+        try:
+            with httpx.Client(timeout=10) as client:
+                token_response = client.post(
+                    self.google_token_url,
+                    data={
+                        "code": code,
+                        "client_id": self.settings.google_client_id,
+                        "client_secret": self.settings.google_client_secret,
+                        "redirect_uri": self.settings.google_redirect_uri,
+                        "grant_type": "authorization_code",
+                    },
+                )
+                token_response.raise_for_status()
+                access_token = token_response.json()["access_token"]
+                user_response = client.get(
+                    self.google_userinfo_url,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                user_response.raise_for_status()
+                identity = user_response.json()
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
+            raise UnauthorizedError("Google OAuth authentication failed.") from exc
 
         if not identity.get("email_verified", False):
             raise UnauthorizedError("Google account email is not verified.")
         return identity
 
     def _validate_frontend_redirect(self, redirect_uri: str) -> None:
-        allowed_prefix = self.settings.frontend_base_url
-        if not redirect_uri.startswith(allowed_prefix):
+        allowed = urlparse(self.settings.frontend_base_url)
+        candidate = urlparse(redirect_uri)
+        if (
+            candidate.scheme not in {"http", "https"}
+            or candidate.scheme != allowed.scheme
+            or candidate.netloc != allowed.netloc
+        ):
             raise ValidationError("Invalid frontend redirect URI.")
-
