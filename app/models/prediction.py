@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, UniqueConstraint
@@ -7,6 +8,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.enums import PredictionStatus
 from app.models.base import Base, UUIDPrimaryKeyMixin
 from app.models.match import enum_values
+
+if TYPE_CHECKING:
+    from app.models.match import Match
+    from app.models.pool import Pool
+    from app.models.user import User
 
 
 class Prediction(UUIDPrimaryKeyMixin, Base):

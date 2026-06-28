@@ -1,453 +1,375 @@
-# AI Agent Instructions
+# AI Multi-Agent Project Instructions
 
-## Role
+## Project Overview
 
-Act as a Senior Full Stack Engineer specialized in Python web applications, software architecture and production-quality development.
+This project is developed collaboratively by multiple AI agents.
 
-You are responsible for:
+Every agent must read this document before performing any task.
 
-- Architecture decisions.
-- Code quality.
-- Security.
-- Maintainability.
-- Scalability.
+This file is the single source of truth for:
 
-Think and work as the technical owner of the project.
+- Project vision
+- Technical goals
+- Architectural principles
+- Development philosophy
+- Technology stack
+- Collaboration rules
+
+Detailed implementation instructions belong to each specialized agent.
 
 ---
 
 # Project Goal
 
-Build a modern, maintainable and scalable web application for managing a private FIFA World Cup 2026 prediction pool ("porra").
+Build a modern web application for managing a private FIFA World Cup 2026 prediction pool ("Porra").
 
-The application allows a group of users to compete by predicting knockout stage match results.
+The application must provide a polished user experience while remaining simple to maintain and inexpensive to operate.
 
-The group stage is already completed.
-
-The application only manages:
-
-- Round of 32.
-- Round of 16.
-- Quarter-finals.
-- Semi-finals.
-- Final.
-
-The system must NOT manage:
-
-- Group stage predictions.
-- Group standings.
-- Qualification rules.
-
-Users should be able to:
-
-- Create private prediction pools.
-- Join pools using invitation codes.
-- Predict match results.
-- Track accumulated points.
-- Compare rankings against participants.
-
-The initial target is small private groups (10-100 users), but the architecture should support future growth.
+The application targets private groups of approximately 10–100 users.
 
 ---
 
-# MVP Scope
+# Tournament Scope
+
+The application only manages the knockout phase.
+
+Supported stages:
+
+- Round of 32
+- Round of 16
+- Quarter-finals
+- Semi-finals
+- Final
+
+The application does NOT manage:
+
+- Group stage
+- Qualification rules
+- League standings
+
+---
+
+# Core Features
 
 The MVP includes:
 
-## Authentication
-
-- User registration.
-- Authentication using Google OAuth 2.0.
-- User profile management.
-
----
-
-## Prediction Pools
-
-- Create pools.
-- Join pools.
-- Manage participants.
-- Generate invitation codes.
+- Google authentication
+- Private prediction pools
+- Invitation codes
+- Match predictions
+- Prediction locking
+- Automatic scoring
+- Live rankings
 
 ---
 
-## Tournament
+# Scoring Rules
 
-Support knockout bracket management:
+Winner correctly predicted
 
-- Round of 32.
-- Round of 16.
-- Quarter-finals.
-- Semi-finals.
-- Final.
++2 points
 
-A match must support:
+Exact score
 
-- Home team.
-- Away team.
-- Tournament stage.
-- Scheduled date.
-- Status.
-- Final score.
-- Winner.
++2 additional points
 
-The system must understand knockout progression:
+One team's goals correctly predicted
 
-- Winner advances to next stage.
-- Matches belong to a tournament bracket.
++1 additional point
+
+Maximum score per match:
+
+4 points
+
+The scoring engine must remain configurable.
 
 ---
 
-## Predictions
+# Technical Stack
 
-Users can:
+Frontend
 
-- Submit predictions before the match starts.
-- Edit predictions until match lock time.
-- View previous predictions.
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
 
-Predictions must contain:
+Backend
 
-- User.
-- Match.
-- Predicted home goals.
-- Predicted away goals.
-- Submission timestamp.
-- Lock status.
-
-Predictions are not allowed after the match begins.
-
----
-
-# Scoring System
-
-The scoring engine calculates points independently from UI and persistence.
-
-Rules:
-
-## Correct Winner
-
-+2 points if the predicted winning team is correct.
-
----
-
-## Exact Score
-
-+2 additional points if both goals are exactly correct.
-
-Example:
-
-Prediction:
-
-Spain 3 - 1 Austria
-
-Actual:
-
-Spain 3 - 1 Austria
-
-Points:
-
-- Correct winner: +2
-- Exact score: +2
-
-Total: +4
-
----
-
-## Partial Score
-
-+1 additional point if one team's goal count is correct.
-
-Example:
-
-Prediction:
-
-Spain 3 - 1 Austria
-
-Actual:
-
-Spain 3 - 0 Austria
-
-Points:
-
-- Correct winner: +2
-- Spain goals correct: +1
-
-Total: +3
-
----
-
-The scoring logic must be:
-
-- Independent.
-- Testable.
-- Configurable.
-
-Future scoring rules should not require rewriting the application.
-
----
-
-# Architecture Guidelines
-
-Use a modular monolith architecture.
-
-Recommended structure:
-
-```
-app/
-├── api/
-├── frontend/
-├── domain/
-├── services/
-├── repositories/
-├── models/
-├── config/
-└── tests/
-```
-
-
-Business rules must not depend on:
-
-- Streamlit.
-- FastAPI.
-- Database.
-- External providers.
-
-The domain layer must be independently testable.
-
----
-
-# Tech Stack
-
-## Frontend
-
-Use:
-
-- Streamlit
-
-Rules:
-
-- Keep components reusable.
-- Avoid business logic inside UI.
-- Keep pages small.
-- Communicate with backend through APIs.
-
----
-
-## Backend
-
-Use:
-
-- Python
 - FastAPI
+- Python
 
-Requirements:
-
-- REST API.
-- Request validation.
-- Error handling.
-- Authentication middleware.
-- Clear separation of responsibilities.
-
----
-
-## Database
-
-Use:
+Database
 
 - PostgreSQL
+- Neon
 
-Database will be hosted using:
+Authentication
 
-- Neon PostgreSQL.
+- Google OAuth 2.0
 
-The database must support:
-
-- Users.
-- Pools.
-- Participants.
-- Teams.
-- Matches.
-- Predictions.
-- Scores.
-- Rankings.
-
----
-
-# Database Rules
-
-Follow:
-
-- Use PostgreSQL migrations.
-- Never modify schemas manually.
-- Use constraints.
-- Add indexes when needed.
-- Keep database access isolated.
-- Use repositories.
-
-Database changes must be reproducible.
-
----
-
-# Deployment Architecture
-
-The application must be deployable to a cloud environment.
-
-Target deployment:
-
-## Frontend
-
-Platform:
+Hosting
 
 - Render
 
-Runs:
+Version Control
 
-- Streamlit application.
+- GitHub
+
+Infrastructure
+
+- Docker
+- GitHub Actions
+
+---
+
+# Architecture
+
+The project follows a Modular Monolith architecture.
+
+Layers:
+
+Presentation
+
+↓
+
+API
+
+↓
+
+Application Services
+
+↓
+
+Domain
+
+↓
+
+Repositories
+
+↓
+
+Database
+
+Business rules belong exclusively to the Domain layer.
+
+---
+
+# Project Principles
+
+Always prioritize:
+
+- Simplicity
+- Maintainability
+- Readability
+- Testability
+- Security
+
+Avoid unnecessary complexity.
+
+---
+
+# AI Agent Responsibilities
+
+The project contains multiple specialized agents.
+
+## Architect
+
+Owns:
+
+- Architecture
+- Technical decisions
+- API contracts
+- Domain model
 
 ---
 
 ## Backend
 
-Platform:
+Owns:
 
+- FastAPI
+- Business rules
+- Authentication
+- Database
+- Scoring engine
+
+---
+
+## Frontend
+
+Owns:
+
+- Next.js
+- UI
+- UX
+- API consumption
+
+---
+
+## DevOps
+
+Owns:
+
+- Docker
+- Deployment
+- CI/CD
 - Render
-
-Runs:
-
-- FastAPI service.
-
-Requirements:
-
-- Production ASGI server.
-- Health check endpoint.
-- Environment-based configuration.
-
----
-
-## Database
-
-Platform:
-
 - Neon
-
-Runs:
-
-- Managed PostgreSQL.
-
-The application must:
-
-- Never depend on local database files.
-- Use connection strings.
-- Support production database migrations.
+- Environment variables
 
 ---
 
-# Deployment Requirements
+## Reviewer
 
-The project must support:
+Owns:
 
-- Docker deployment.
-- Environment variables.
-- Development and production configurations.
-
-Never store:
-
-- Secrets.
-- API keys.
-- Passwords.
-
-inside the repository.
+- Code quality
+- Reviews
+- Testing validation
+- Production readiness
 
 ---
 
-Required environment variables:
+# Collaboration Rules
 
-Example:
-```
-DATABASE_URL=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-SECRET_KEY=
-ENVIRONMENT=
-```
+Agents must never invade another agent's responsibilities.
 
----
+When functionality depends on another layer:
 
-# Coding Standards
+Document the dependency.
 
-Python:
-
-- Follow PEP8.
-- Use type hints.
-- Use clear naming.
-- Write modular code.
-
-General:
-
-- Avoid duplication.
-- Keep functions focused.
-- Add validation.
-- Handle errors properly.
-- Write maintainable code.
+Do not implement another team's work.
 
 ---
 
-# Development Workflow
-
-Before coding:
-
-1. Analyze the task.
-2. Identify affected modules.
-3. Explain the approach.
-
-For small changes:
-
-- Implement directly.
-
-For large changes:
-
-- Provide a short plan first.
-
-After changes:
-
-Summarize:
-
-- Files changed.
-- Implementation details.
-- Tests executed.
-- Possible improvements.
-
----
-
-# Product Constraints
-
-This is an MVP-first project.
-
-Avoid:
-
-- Microservices.
-- Over-engineering.
-- Complex infrastructure.
-- Premature abstractions.
+# Coding Philosophy
 
 Prefer:
 
-- Simple solutions.
-- Modular monolith.
-- Clear boundaries.
-- Maintainable code.
-- Cloud-ready architecture.
+- Explicit code
+- Small functions
+- Reusable components
+- Strong typing
+
+Avoid:
+
+- Premature abstractions
+- Over-engineering
+- Duplicate code
 
 ---
 
-# Do Not
+# Security
 
-Do not:
+Never:
 
-- Put business logic inside Streamlit.
-- Introduce dependencies without reason.
-- Rewrite working code unnecessarily.
-- Create abstractions without a real use case.
-- Ignore existing project conventions.
-- Depend on local filesystem persistence.
+- Commit secrets
+- Commit .env
+- Hardcode credentials
+
+Always use environment variables.
+
+---
+
+# Database
+
+Use:
+
+- Alembic migrations
+
+Never:
+
+- Modify production schemas manually.
+
+---
+
+# Deployment
+
+Production environment:
+
+Frontend
+
+Render
+
+Backend
+
+Render
+
+Database
+
+Neon PostgreSQL
+
+Deployment must be reproducible.
+
+---
+
+# Testing
+
+Every significant business feature should include tests.
+
+Prefer:
+
+- Unit tests
+- Integration tests
+
+---
+
+# Documentation
+
+Documentation is mandatory.
+
+Keep updated:
+
+docs/
+
+- architecture.md
+- api.md
+- database.md
+- deployment.md
+- roadmap.md
+
+---
+
+# Decision Making
+
+When several solutions are possible:
+
+1. Compare options.
+2. Explain trade-offs.
+3. Recommend one.
+4. Justify the decision.
+
+Never choose arbitrarily.
+
+---
+
+# Quality Standard
+
+Every contribution should be production-ready.
+
+Before considering a task complete, verify:
+
+✓ Clean architecture
+
+✓ No duplicated logic
+
+✓ Proper validation
+
+✓ Error handling
+
+✓ Tests updated
+
+✓ Documentation updated
+
+✓ Environment variables documented
+
+✓ Deployment unaffected
+
+---
+
+# Final Goal
+
+The objective is not simply to generate code.
+
+The objective is to collaboratively build a production-quality application that can evolve over time while remaining maintainable, secure and enjoyable to work on.

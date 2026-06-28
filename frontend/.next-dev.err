@@ -1,0 +1,57 @@
+ ⨯ ./lib/auth/require-session.ts
+Error:   [31mx[0m Expression expected
+    ,-[[36;1;4mC:\dev\worldcup-pool-app\frontend\lib\auth\require-session.ts[0m:22:1]
+ [2m19[0m |   }
+ [2m20[0m | }
+ [2m21[0m |     redirect("/");
+ [2m22[0m |   }
+    : [35;1m  ^[0m
+ [2m23[0m | 
+ [2m24[0m |   const user = await getCurrentUser(session.accessToken);
+ [2m25[0m |   return { ...session, user };
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./lib/auth/require-session.ts
+./app/page.tsx
+ ⨯ ./lib/auth/require-session.ts
+Error:   [31mx[0m Expression expected
+    ,-[[36;1;4mC:\dev\worldcup-pool-app\frontend\lib\auth\require-session.ts[0m:23:1]
+ [2m20[0m |   }
+ [2m21[0m | }
+ [2m22[0m |     redirect("/");
+ [2m23[0m |   }
+    : [35;1m  ^[0m
+ [2m24[0m | 
+ [2m25[0m |   const user = await getCurrentUser(session.accessToken);
+ [2m26[0m |   return { ...session, user };
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./lib/auth/require-session.ts
+./app/page.tsx
+ ⨯ ./lib/auth/require-session.ts
+Error:   [31mx[0m Expression expected
+    ,-[[36;1;4mC:\dev\worldcup-pool-app\frontend\lib\auth\require-session.ts[0m:23:1]
+ [2m20[0m |   }
+ [2m21[0m | }
+ [2m22[0m |     redirect("/");
+ [2m23[0m |   }
+    : [35;1m  ^[0m
+ [2m24[0m | 
+ [2m25[0m |   const user = await getCurrentUser(session.accessToken);
+ [2m26[0m |   return { ...session, user };
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./lib/auth/require-session.ts
+./app/page.tsx

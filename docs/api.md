@@ -1,13 +1,70 @@
 # API Design
 
+Status: Implemented MVP API surface exists and is pending contract review.
+Last reconciled: 2026-06-29.
+
+This file is the intended API contract plus reconciliation notes for the API
+surface currently implemented under `app/api`. Frontend and backend work must
+not introduce further divergence without Architect review.
+
 ## API Principles
 
 - REST JSON API under `/api/v1`.
 - Backend owns authentication, authorization, validation, scoring, and persistence.
-- Streamlit frontend calls the backend only through these APIs.
+- The frontend calls the backend only through these APIs.
 - All protected endpoints require an `Authorization: Bearer <access_token>` header.
 - All timestamps are ISO 8601 UTC.
 - Request and response bodies use snake_case to match Python models.
+
+## Contract Ownership
+
+The architect owns this API contract. Frontend and backend agents must treat this file as the shared source of truth.
+
+Contract changes require:
+
+1. Update this document first.
+2. Review the impact on frontend, backend, database, authentication, and deployment.
+3. Implement backend changes.
+4. Update frontend API client and types.
+5. Add or update tests for affected flows.
+
+## Current Implementation Snapshot
+
+The repository currently implements these route groups under `/api/v1`:
+
+- `/auth`: Google OAuth start/callback, exchange, refresh, logout.
+- `/users`: current profile read/update.
+- `/pools`: pool list/create/detail/update/join, participants, participant removal, invite-code rotation.
+- `/tournaments`: tournament list, team list, match list.
+- `/pools/{pool_id}/predictions`: current user's predictions and match prediction visibility.
+- `/pools/{pool_id}/rankings`: aggregate rankings.
+- `/admin`: match creation, match completion, and rescoring.
+- `/health`: unauthenticated process/database health endpoint outside `/api/v1`.
+
+The Next.js frontend API client currently calls the documented `/api/v1`
+surfaces. This does not replace the need for Reviewer validation of auth,
+authorization, validation, accessibility, and error behavior.
+
+## Contract Reconciliation Gaps
+
+The following differences were observed during ORCH-001 and need specialist
+follow-up rather than silent code changes:
+
+- `PATCH /api/v1/pools/{pool_id}`: implemented response model is `PoolDetail` and does not include `is_active`; the example below includes `is_active`. Architect/Backend should decide whether to add `is_active` to `PoolDetail` or narrow the documented response.
+- `PATCH /api/v1/admin/matches/{match_id}`: implemented behavior completes a match by accepting `home_score`, `away_score`, and `winner_team_id`; the contract text says it can also update schedule, teams, and status. Backend should either add the broader update behavior or the contract should be narrowed to a completion endpoint.
+- `POST /api/v1/admin/matches/{match_id}/rescore`: implemented response is `MatchRead`. Contract should explicitly document this response if accepted.
+- Rankings: implementation tie-breaks by total points, exact scores, correct winners, then display name. `docs/database.md` recommends earliest joined participant as the final tie-breaker. Backend/Architect should choose one deterministic rule.
+- OAuth redirect configuration: the backend-owned callback should be `BACKEND_BASE_URL/api/v1/auth/google/callback`; `.env.example` currently disagrees with Docker Compose. DevOps/Backend should align environment examples and deployment docs.
+- Error format is implemented for service/domain errors and unauthorized cases; FastAPI/Pydantic `422` validation errors still use FastAPI's default shape unless a custom handler is added. Reviewer/Backend should decide whether full standardization is required for MVP.
+
+## Frontend/Backend Contract Rules
+
+- Frontend must not infer business rules that the backend can validate.
+- Backend must validate every protected operation even if the frontend hides controls.
+- Frontend must handle `401` by refreshing tokens when possible, then redirecting to login if refresh fails.
+- Backend must use the standard error body for expected errors.
+- Backend must return `404` for resources that are missing or not visible to the current user when revealing existence would be inappropriate.
+- Pagination is not required for MVP pool sizes, but list endpoints should be designed so pagination can be added later without changing resource names.
 
 ## Common Responses
 
@@ -292,6 +349,10 @@ Response:
 }
 ```
 
+Current implementation note: this endpoint currently returns the `PoolDetail`
+shape (`id`, `name`, `tournament_id`, `owner_user_id`, `participant_count`,
+`created_at`) and omits `is_active`. This is an open contract gap.
+
 ### POST `/api/v1/pools/join`
 
 Joins a pool by invite code.
@@ -546,6 +607,20 @@ Creates a match. Admin-only.
 
 Updates schedule, teams, status, or scores. Admin-only.
 
+Current implementation note: this endpoint currently completes a match only,
+using:
+
+```json
+{
+  "home_score": 2,
+  "away_score": 1,
+  "winner_team_id": "uuid"
+}
+```
+
+It returns `MatchRead`, advances the winner when configured, and scores
+predictions for that match.
+
 When a match is marked completed, the backend should:
 
 1. Validate scores and winner.
@@ -556,20 +631,24 @@ When a match is marked completed, the backend should:
 
 Recalculates scores for a completed match. Admin-only.
 
+Current implementation response: `MatchRead`.
+
 ## Authentication Flow
 
-1. User clicks "Sign in with Google" in Streamlit.
-2. Streamlit redirects the browser to `/api/v1/auth/google/start?redirect_uri=<frontend_callback>`.
+1. User clicks "Sign in with Google" in the frontend.
+2. The frontend redirects the browser to `/api/v1/auth/google/start?redirect_uri=<frontend_callback>`.
 3. Backend redirects to Google with OAuth state.
 4. Google redirects to backend `/api/v1/auth/google/callback`.
 5. Backend validates Google identity and upserts the application user.
 6. Backend creates a short-lived one-time exchange code.
-7. Backend redirects the browser to the Streamlit callback with that exchange code.
-8. Streamlit calls `/api/v1/auth/exchange` from the server side.
+7. Backend redirects the browser to the frontend callback with that exchange code.
+8. The frontend exchanges the code through `/api/v1/auth/exchange`.
 9. Backend returns application access and refresh tokens.
-10. Streamlit stores tokens in session state and sends access token on API calls.
-11. Streamlit refreshes the access token through `/api/v1/auth/refresh` when needed.
-12. Logout calls `/api/v1/auth/logout` and clears Streamlit session state.
+10. The frontend stores auth state and sends the access token on API calls.
+11. The frontend refreshes the access token through `/api/v1/auth/refresh` when needed.
+12. Logout calls `/api/v1/auth/logout` and clears frontend auth state.
+
+For the target Next.js frontend, prefer storing refresh tokens in an HTTP-only session cookie managed by a server route. The backend API contract does not require Google client secrets in the frontend.
 
 ## Token Policy
 
@@ -581,4 +660,3 @@ Recommended MVP defaults:
 - Refresh tokens rotate on use.
 - Access tokens are signed with `SECRET_KEY`.
 - Token payload includes `sub`, `email`, `display_name`, `iat`, `exp`, and `jti`.
-

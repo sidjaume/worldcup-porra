@@ -1,5 +1,12 @@
 # Development Roadmap
 
+Status: MVP implementation slices exist and are pending reconciliation, review, and production configuration.
+Last reconciled: 2026-06-29.
+
+Implementation has already begun. This roadmap now describes the intended
+delivery phases, their current status, and the gates still required before the
+work can be treated as merge-ready or production-ready.
+
 ## Guiding Strategy
 
 Build the MVP as a modular monolith with strong domain boundaries before adding operational complexity. The first production-ready release should support a small private group end to end:
@@ -13,7 +20,37 @@ Build the MVP as a modular monolith with strong domain boundaries before adding 
 - Rankings
 - Render + Neon deployment
 
+## Review Gates
+
+Architecture reconciliation and Reviewer approval are required before the
+current implementation is treated as merge-ready.
+
+Review checklist:
+
+- Architecture follows `AGENTS.md` and `.agents/architect.md`.
+- Backend owns business rules and persistence.
+- Frontend/backend contract is documented.
+- PostgreSQL schema supports the MVP without group-stage concepts.
+- API endpoints are RESTful and predictable.
+- Deployment target is Render + Neon.
+- No secrets are stored in the repository.
+
+Each phase should finish with:
+
+- Tests appropriate to risk.
+- Updated documentation when contracts change.
+- Reviewer approval before moving to the next phase.
+
+Current gate status:
+
+- Architecture/API/database/roadmap reconciliation: in progress under ORCH-001.
+- Independent production-readiness review: pending under REV-001.
+- Production deployment: blocked until Render, Neon, Google OAuth, and secrets are configured outside the repository.
+- OAuth/environment alignment: pending DevOps/Backend follow-up.
+
 ## Phase 0: Project Foundation
+
+Status: Implemented, pending Reviewer validation.
 
 Deliverables:
 
@@ -34,6 +71,8 @@ Acceptance criteria:
 
 ## Phase 1: Domain Layer
 
+Status: Implemented, pending Reviewer validation.
+
 Deliverables:
 
 - Domain enums for stages, match status, prediction status, and slots.
@@ -53,9 +92,11 @@ Tests:
 
 Acceptance criteria:
 
-- Domain tests do not import FastAPI, SQLAlchemy, Streamlit, or external providers.
+- Domain tests do not import FastAPI, SQLAlchemy, frontend framework code, or external providers.
 
 ## Phase 2: Database and Repositories
+
+Status: Implemented initial slice, pending Backend/Reviewer validation.
 
 Deliverables:
 
@@ -76,7 +117,12 @@ Acceptance criteria:
 - Schema can be recreated from migrations.
 - No application feature depends on local files for persistence.
 
+Known follow-up: repository integration tests and migration smoke tests are
+tracked as `BE-001` in `docs/backlog.md`.
+
 ## Phase 3: Authentication
+
+Status: Implemented initial slice, pending OAuth configuration audit and Reviewer validation.
 
 Deliverables:
 
@@ -96,10 +142,15 @@ Tests:
 
 Acceptance criteria:
 
-- Streamlit can authenticate through backend-owned OAuth.
+- The frontend can authenticate through backend-owned OAuth.
 - Google secrets exist only in backend configuration.
 
+Known follow-up: `.env.example`, Docker Compose, Render variables, and docs must
+agree on backend-owned OAuth callback URLs before production deployment.
+
 ## Phase 4: Pool Management
+
+Status: Implemented initial slice, pending API contract review and Reviewer validation.
 
 Deliverables:
 
@@ -123,12 +174,14 @@ Acceptance criteria:
 
 ## Phase 5: Tournament and Predictions
 
+Status: Implemented initial slice, pending Reviewer validation.
+
 Deliverables:
 
 - Match listing by tournament and stage.
 - User prediction create/update endpoint.
 - Prediction visibility rules.
-- Streamlit prediction forms.
+- Frontend prediction forms.
 - Read-only state for locked/completed matches.
 
 Tests:
@@ -144,6 +197,8 @@ Acceptance criteria:
 
 ## Phase 6: Results, Scoring, and Rankings
 
+Status: Implemented initial slice, pending tie-breaker/contract decision and Reviewer validation.
+
 Deliverables:
 
 - Admin match result endpoint.
@@ -151,7 +206,7 @@ Deliverables:
 - Winner progression.
 - Prediction scoring.
 - Ranking endpoint.
-- Streamlit ranking table.
+- Frontend ranking table.
 
 Tests:
 
@@ -164,23 +219,33 @@ Acceptance criteria:
 
 - After a match result is entered, users see updated points and rankings.
 
-## Phase 7: Streamlit MVP UX
+Known follow-up: decide whether ranking ties should use earliest joined
+participant or display name as the final deterministic tie-breaker.
+
+## Phase 7: Frontend MVP UX
+
+Status: Implemented initial slice, pending Product Designer/Reviewer validation.
 
 Deliverables:
 
+- Next.js app structure with React, TypeScript, and Tailwind CSS.
 - Dashboard.
 - Pool management page.
 - Predictions page grouped by stage.
 - Rankings page.
 - Profile page.
-- Reusable API client and UI components.
+- Reusable typed API client and UI components.
 - User-facing error handling.
+- Responsive mobile-first layouts.
 
 Acceptance criteria:
 
 - A non-technical participant can log in, join a pool, submit predictions, and check rankings without backend knowledge.
+- Frontend does not duplicate backend scoring, locking, ranking, membership, or bracket progression logic.
 
 ## Phase 8: Deployment
+
+Status: Local Docker/Render blueprint implemented; production deployment blocked.
 
 Deliverables:
 
@@ -200,7 +265,12 @@ Acceptance criteria:
 - Production database uses Neon connection string with SSL.
 - Production deploy can be repeated from a clean environment.
 
+Known follow-up: production Render + Neon deployment remains blocked until real
+external accounts, OAuth client configuration, and production secrets exist.
+
 ## Phase 9: Hardening and Polish
+
+Status: Planned/deferred.
 
 Deliverables:
 
@@ -209,7 +279,7 @@ Deliverables:
 - Better audit trail for match result changes.
 - More complete observability.
 - Backup/restore runbook.
-- Accessibility and mobile checks for Streamlit screens.
+- Accessibility and mobile checks for frontend screens.
 
 Acceptance criteria:
 
@@ -224,11 +294,15 @@ Includes phases 0-1.
 
 Outcome: The core prediction, scoring, and bracket rules are implemented and tested independently.
 
+Status: Implemented, pending review.
+
 ### Milestone 2: Persistent Backend
 
 Includes phases 2-4.
 
 Outcome: Authenticated users can create and join pools backed by PostgreSQL.
+
+Status: Implemented initial slice, pending review and OAuth config audit.
 
 ### Milestone 3: Playable Pool
 
@@ -236,11 +310,16 @@ Includes phases 5-6.
 
 Outcome: Users can submit predictions, admins can enter results, and rankings update.
 
+Status: Implemented initial slice, pending review and ranking tie-breaker decision.
+
 ### Milestone 4: Deployed MVP
 
 Includes phases 7-8.
 
 Outcome: The app is usable by a private group on Render + Neon.
+
+Status: In progress. Local Docker stack is documented as healthy in
+`docs/project-status.md`; production deployment is not complete.
 
 ### Milestone 5: Production Readiness
 
@@ -248,10 +327,13 @@ Includes phase 9.
 
 Outcome: The MVP is safer to operate during the tournament.
 
+Status: Planned/deferred.
+
 ## Early Technical Decisions
 
 - Use FastAPI for the backend REST API.
-- Use Streamlit for the frontend only.
+- Use Next.js, React, TypeScript, and Tailwind CSS for the production frontend.
+- Use the Next.js frontend as the product-facing UI.
 - Use PostgreSQL on Neon for all persistence.
 - Use Alembic for migrations.
 - Use SQLAlchemy for ORM/repository implementation.
@@ -262,10 +344,12 @@ Outcome: The MVP is safer to operate during the tournament.
 
 ## Open Questions
 
-- Should knockout predictions allow draws after regulation time, or should users predict the final official score after extra time/penalties? The MVP should define this before implementation because it affects winner calculation.
-- Who can administer tournament matches in the first release: an environment-configured admin list, pool owners, or a global admin role?
+- Should knockout predictions allow draws after regulation time, or should users predict the final official score after extra time/penalties? Current implementation rejects tied completed knockout scores and requires a winner, but the product wording should still be confirmed.
+- Who can administer tournament matches in the first release: an environment-configured admin list, pool owners, or a global admin role? Current implementation uses `ADMIN_EMAILS`.
 - Should invite codes be human-friendly short codes or longer URL-safe tokens? Human-friendly is easier for private groups; longer tokens reduce guessing risk.
-- Should predictions become visible at kickoff or only after the match is completed?
+- Should predictions become visible at kickoff or only after the match is completed? Current implementation reveals all match predictions after the match locks, not only after completion.
+- Should admin match update remain a completion-only endpoint, or should it support broader schedule/team/status updates as currently described in `docs/api.md`?
+- Should ranking ties use earliest joined participant or display name as the final tie-breaker?
 
 ## Possible Post-MVP Improvements
 
@@ -276,4 +360,3 @@ Outcome: The MVP is safer to operate during the tournament.
 - Materialized ranking cache for larger usage.
 - Multi-language frontend.
 - Audit log screen for pool owners.
-

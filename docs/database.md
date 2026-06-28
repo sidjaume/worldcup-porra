@@ -1,10 +1,76 @@
 # Database Design
 
+Status: Initial schema migration exists and is pending database/architecture review.
+Last reconciled: 2026-06-29.
+
+This document remains the target database design. It now also records how the
+implemented Alembic migration aligns with the target model and which invariants
+are currently enforced in backend services rather than in PostgreSQL.
+
 ## Goals
 
 The PostgreSQL model supports private pools, users, knockout bracket matches, predictions, scoring, and rankings. The backend is the only application component that connects to the database.
 
 All schema changes must be implemented through migrations. The recommended migration tool is Alembic.
+
+The repository currently contains an initial Alembic migration at
+`app/db/migrations/versions/20260628_0001_initial_backend_schema.py`.
+
+## Ownership
+
+The backend owns all database access. Frontend services must never connect directly to PostgreSQL or receive `DATABASE_URL`.
+
+Repositories are the only backend modules allowed to express SQL persistence details. Services may coordinate repositories, but should not spread ad hoc query logic through API routers.
+
+## Data Model Summary
+
+```text
+users 1--* oauth_accounts
+users 1--* pool_participants
+tournaments 1--* teams
+tournaments 1--* matches
+tournaments 1--* pools
+pools 1--* pool_participants
+pools 1--* predictions
+matches 1--* predictions
+predictions 1--0..1 prediction_scores
+matches 0..1--0..1 matches via next_match_id
+```
+
+Important modeling decisions:
+
+- Predictions belong to a pool, not only to a user and match.
+- Rankings are derived from prediction scores.
+- Invite codes, refresh tokens, and exchange codes are stored only as hashes.
+- Bracket progression is explicit through `matches.next_match_id` and `matches.next_match_slot`.
+
+## Current Implementation Snapshot
+
+The initial migration creates the core MVP schema:
+
+- PostgreSQL extensions: `pgcrypto` and `citext`.
+- Enums: `tournament_stage`, `match_status`, `pool_role`, `participant_status`, `next_slot`, and `prediction_status`.
+- Tables: `users`, `oauth_accounts`, `tournaments`, `teams`, `matches`, `pools`, `pool_participants`, `predictions`, `prediction_scores`, `auth_sessions`, and `auth_exchange_codes`.
+- Indexes/constraints for unique emails, OAuth subjects, tournament/team/match identity, invite-code hashes, participant uniqueness, prediction uniqueness, non-negative scores/predictions, and auth token/code hashes.
+
+The implemented ORM models live under `app/models`, and repository access lives
+under `app/repositories`. This matches the intended backend-only database
+ownership boundary.
+
+## Reconciliation Gaps
+
+The following target invariants are not fully enforced by the initial migration
+and should be reviewed by Backend/Reviewer before production:
+
+- `matches`: the migration enforces non-negative scores and distinct teams, but does not enforce "completed matches have scores and a winner", "final matches cannot have `next_match_id`", or "`next_match_slot` must be present when `next_match_id` is present". Some of this is currently enforced by `AdminService`.
+- `teams`: the documented unique `(tournament_id, fifa_code)` constraint is implemented as a normal unique constraint, not a partial unique index excluding null `fifa_code` values. PostgreSQL allows multiple nulls in a unique constraint, so behavior is acceptable, but the implementation detail differs from the wording.
+- `predictions`: pool/match tournament consistency and active pool membership are enforced in the service layer, not by composite foreign keys or database constraints.
+- `prediction_scores`: rankings are derived from queries, not a database view. That is acceptable for MVP, but the docs should keep calling it derived rather than a stored ranking table.
+- Ranking tie-breaker: implementation currently uses display name as the final tie-breaker; this document recommends earliest joined participant. Architect/Backend should settle the contract.
+
+No schema change is made by this reconciliation. These gaps should become
+Backend-owned tasks if the Reviewer decides database-level enforcement is
+required for merge or production readiness.
 
 ## Conventions
 
@@ -286,7 +352,7 @@ Indexes:
 
 ### auth_exchange_codes
 
-Short-lived one-time codes used to complete backend-owned Google OAuth from the Streamlit frontend.
+Short-lived one-time codes used to complete backend-owned Google OAuth from the frontend.
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -326,6 +392,11 @@ Recommended ordering:
 3. Correct winners descending.
 4. Earliest joined participant ascending.
 
+Current implementation note: the backend currently uses display name as the
+final tie-breaker instead of earliest joined participant. This needs an
+Architect/Backend decision before the API/database contract is considered
+closed.
+
 If performance becomes an issue, add a materialized view or cached `pool_rankings` table updated after match scoring. This is not needed for the MVP.
 
 ## Scoring Persistence
@@ -342,7 +413,7 @@ This design allows recalculating scores after a scoring-rule change by storing `
 
 ## Migration Strategy
 
-Initial migration order:
+Initial migration order, already represented by the current initial migration:
 
 1. Enable required extensions: `pgcrypto` for UUID generation and `citext` for case-insensitive email.
 2. Create enums.
@@ -359,4 +430,3 @@ Production migration rules:
 - Backward-compatible migrations are preferred.
 - Never edit applied migration files.
 - Run migrations as a release step before backend deployment or as a controlled Render job.
-

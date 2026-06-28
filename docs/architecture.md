@@ -1,5 +1,13 @@
 # Architecture
 
+Status: Implementation exists and is pending architecture/reviewer reconciliation.
+Last reconciled: 2026-06-29.
+
+This document remains the target architecture and contract governance source. It
+no longer blocks implementation from beginning; instead, it records the intended
+architecture, the implemented MVP slices currently present in the repository,
+and the gaps that need specialist follow-up before merge or production release.
+
 ## Purpose
 
 This application is a private FIFA World Cup 2026 knockout prediction pool. It manages only the completed-tournament knockout bracket:
@@ -14,17 +22,18 @@ The application does not model group stage standings, group predictions, qualifi
 
 ## System Architecture
 
-The MVP uses a modular monolith split into two deployable processes:
+The MVP uses a modular monolith split into two deployable processes. The current
+repository already contains this shape:
 
 - Backend: FastAPI REST API, domain services, repositories, migrations, and authentication.
-- Frontend: Streamlit app that renders the user experience and talks to the backend through HTTP APIs.
+- Frontend: Next.js application that renders the user experience and talks to the backend through HTTP APIs.
 - Database: Neon PostgreSQL, accessed only by backend repositories.
 
 ```text
 Browser
   |
   v
-Render Web Service: Streamlit frontend
+Render Web Service: Next.js frontend
   |
   | HTTPS REST calls with bearer token
   v
@@ -41,19 +50,97 @@ FastAPI backend owns OAuth redirects, callback handling, user provisioning,
 and application token issuance.
 ```
 
+## Current Implementation Snapshot
+
+As of this reconciliation pass, the repository includes:
+
+- FastAPI backend under `app/` with routers for auth, users, pools, tournaments, predictions, rankings, admin match operations, and `/health`.
+- Domain services for scoring, prediction locking, and bracket progression.
+- Application services and SQLAlchemy repositories for auth, pools, tournaments, predictions, rankings, and admin result workflows.
+- SQLAlchemy models and an Alembic initial migration for users, OAuth accounts, tournaments, teams, matches, pools, participants, predictions, prediction scores, auth sessions, and auth exchange codes.
+- Next.js frontend under `frontend/` with authenticated pool, prediction, ranking, profile, callback, refresh, logout, and health routes.
+- Dockerfiles, Docker Compose local stack, Render blueprint, CI workflow, and environment documentation.
+
+Implementation status is not equivalent to production approval. The current
+state still requires independent Reviewer assessment, Backend/Frontend/DevOps
+follow-ups listed in `docs/backlog.md`, and production secret/configuration
+work before deployment.
+
 ## Architectural Principles
 
-- Keep business rules independent from FastAPI, Streamlit, PostgreSQL, and Google OAuth.
+- Keep business rules independent from FastAPI, frontend framework code, PostgreSQL, and Google OAuth.
 - Treat the domain layer as the source of truth for scoring, prediction locks, and knockout progression rules.
 - Use repositories for all database access.
-- Keep Streamlit pages thin: UI state, forms, rendering, and API client calls only.
+- Keep frontend components thin: UI state, forms, rendering, and API client calls only.
 - Use migrations for every database schema change.
 - Prefer explicit, simple service classes over broad abstractions.
 - Design for 10-100 users per pool first, while avoiding choices that block later growth.
 
+## Architecture Decisions
+
+### ADR-001: Modular Monolith
+
+Decision: Use a modular monolith with clear internal boundaries.
+
+Rationale:
+
+- The MVP is small enough that microservices would add operational cost without product value.
+- Domain rules remain testable when kept separate from API, persistence, and UI code.
+- A single backend deployment is simpler for Render and Neon.
+
+Rejected alternatives:
+
+- Microservices: premature for 10-100 users per private pool.
+- Direct frontend-to-database access: violates security and business-rule boundaries.
+
+### ADR-002: Backend-Owned Business Rules
+
+Decision: Backend owns authentication, authorization, prediction locking, scoring, bracket progression, rankings, and persistence.
+
+Rationale:
+
+- Prevents frontend/backend divergence.
+- Makes scoring and locking independently testable.
+- Keeps private pool membership authorization enforceable.
+
+Frontend responsibility is presentation, navigation, local UI state, and backend API calls.
+
+### ADR-003: Backend-Owned Google OAuth
+
+Decision: Google OAuth redirects and Google token exchange are handled by FastAPI.
+
+Rationale:
+
+- Google client secret must never be exposed to the frontend.
+- User provisioning and application token issuance are backend concerns.
+- The same contract works for both local prototype and production frontend.
+
+### ADR-004: PostgreSQL With Alembic
+
+Decision: Use PostgreSQL through repositories and manage schema changes with Alembic migrations.
+
+Rationale:
+
+- Neon is the target managed database.
+- Constraints, indexes, UUIDs, and transactional migrations are required for reproducibility.
+- PostgreSQL keeps the MVP cloud-ready.
+
+### ADR-005: Next.js Production Frontend
+
+Decision: The production frontend target is Next.js, React, TypeScript, and Tailwind CSS.
+
+Rationale:
+
+- Matches the current project constitution and architect deployment target.
+- Supports responsive web UX and maintainable component structure.
+- Keeps the frontend deployable as an independent Render service.
+
+The earlier Streamlit prototype has been removed. Product-facing frontend work
+targets the Next.js structure below.
+
 ## Backend Module Structure
 
-Recommended initial structure:
+Current implemented structure:
 
 ```text
 app/
@@ -61,32 +148,26 @@ app/
     main.py
     dependencies.py
     errors.py
-    middleware.py
     routers/
       auth.py
       users.py
       pools.py
-      participants.py
       tournaments.py
-      matches.py
       predictions.py
       rankings.py
+      admin.py
     schemas/
       auth.py
+      admin.py
       users.py
       pools.py
       tournaments.py
-      matches.py
       predictions.py
-      rankings.py
   config/
     settings.py
-    logging.py
   domain/
     entities/
       scoring.py
-      prediction.py
-      bracket.py
     enums.py
     errors.py
     services/
@@ -95,21 +176,18 @@ app/
       bracket_progression.py
   services/
     auth_service.py
-    user_service.py
     pool_service.py
     tournament_service.py
     prediction_service.py
-    ranking_service.py
+    admin_service.py
+    security.py
   repositories/
-    base.py
     users.py
     oauth_accounts.py
     pools.py
-    participants.py
-    teams.py
-    matches.py
+    tournaments.py
     predictions.py
-    scores.py
+    auth.py
   models/
     base.py
     user.py
@@ -119,16 +197,21 @@ app/
     team.py
     match.py
     prediction.py
-    score.py
+    auth.py
   db/
     session.py
     migrations/
-  tests/
-    domain/
-    services/
-    api/
-    repositories/
+tests/
+  domain/
+  services/
+  api/
 ```
+
+Architectural note: participants, matches, rankings, and scores are currently
+handled inside the pool, tournament, prediction, and admin modules rather than
+as separate router/repository files. That is acceptable for the MVP modular
+monolith as long as responsibilities stay cohesive and do not push business
+rules into routers or frontend code.
 
 ### Backend Responsibilities
 
@@ -136,7 +219,7 @@ app/
 : FastAPI application setup, request/response schemas, routers, dependencies, middleware, and exception mapping.
 
 `domain`
-: Pure Python rules for scoring, prediction lock checks, match outcome interpretation, and bracket advancement. This layer must not import FastAPI, SQLAlchemy, Streamlit, Google clients, or settings.
+: Pure Python rules for scoring, prediction lock checks, match outcome interpretation, and bracket advancement. This layer must not import FastAPI, SQLAlchemy, Next.js/React code, Streamlit, Google clients, or settings.
 
 `services`
 : Application use cases. Services coordinate repositories, domain rules, authorization checks, and transaction boundaries.
@@ -151,6 +234,36 @@ app/
 : Environment-based settings, logging, CORS, token configuration, and external provider configuration.
 
 ## Domain Boundaries
+
+The implemented boundary is broadly aligned with the target model: scoring,
+lock checks, and bracket progression live under `app/domain`, while FastAPI
+routers coordinate request handling through application services. Continued
+Reviewer scrutiny is still needed for transaction boundaries, authorization
+coverage, and error consistency.
+
+## Domain Model
+
+Core domain concepts:
+
+- User: authenticated person with a Google-linked account.
+- Tournament: FIFA World Cup 2026 knockout tournament container.
+- Team: national team in the knockout bracket.
+- Match: knockout fixture with scheduled time, status, teams, score, winner, and optional next-match progression link.
+- Pool: private prediction group owned by one user.
+- Participant: user's membership in a pool, including role and active/removed status.
+- Prediction: participant's predicted score for one pool-specific match.
+- PredictionScore: persisted result of applying the scoring engine to a prediction.
+- Ranking: derived aggregate view of prediction scores per pool.
+
+Domain invariants:
+
+- Predictions are scoped to `(pool, user, match)`.
+- A user must be an active pool participant to submit or view pool-specific data.
+- Predictions cannot be created or edited after backend lock time.
+- Scoring is calculated by the domain scoring engine, not by UI code.
+- A completed knockout match must have a winner.
+- Winner progression uses explicit `next_match_id` and `next_match_slot` links.
+- Rankings are derived from scores and must not be manually edited.
 
 ### Scoring
 
@@ -197,52 +310,146 @@ When a completed match has a winner, the backend progression service writes the 
 
 ## Frontend Structure
 
-Recommended Streamlit structure:
+Target frontend stack:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+Frontend work targets the implemented Next.js structure below. Some component
+names differ from the earlier target sketch, but the ownership boundary remains:
+the frontend renders UI and calls documented APIs; backend remains the source
+of truth for business rules.
 
 ```text
 frontend/
-  app.py
-  api_client/
-    client.py
-    auth.py
-    pools.py
-    tournaments.py
-    predictions.py
-    rankings.py
+  app/
+    layout.tsx
+    page.tsx
+    auth/
+      callback/
+        route.ts
+      refresh/
+        route.ts
+    logout/
+      route.ts
+    pools/
+      page.tsx
+      [poolId]/
+        page.tsx
+        predictions/
+          page.tsx
+        rankings/
+          page.tsx
+    profile/
+      page.tsx
   components/
-    auth_status.py
-    pool_selector.py
-    match_card.py
-    prediction_form.py
-    ranking_table.py
-    bracket_view.py
-  pages/
-    01_dashboard.py
-    02_pools.py
-    03_predictions.py
-    04_rankings.py
-    05_profile.py
-  state/
-    session.py
-  config.py
+    auth/
+      LoginButton.tsx
+      UserMenu.tsx
+    pools/
+      PoolDashboard.tsx
+      PoolSelector.tsx
+      CreatePoolForm.tsx
+      JoinPoolForm.tsx
+    predictions/
+      MatchPredictionCard.tsx
+      PredictionForm.tsx
+      StageTabs.tsx
+    rankings/
+      RankingTable.tsx
+    layout/
+      AppShell.tsx
+    profile/
+      ProfileForm.tsx
+  lib/
+    api/
+      client.ts
+      auth.ts
+      pools.ts
+      tournaments.ts
+      predictions.ts
+      rankings.ts
+    auth/
+      session.ts
+      tokens.ts
+    config.ts
+  types/
+    api.ts
+  styles/
+    globals.css
 ```
 
 ### Frontend Responsibilities
 
 - Render dashboard, pools, predictions, rankings, and profile screens.
-- Store the current access token in Streamlit session state.
-- Call backend APIs through a small typed API client.
+- Store application auth state securely for the web client. Prefer server-side/session-cookie storage for refresh tokens; avoid localStorage for refresh tokens.
+- Call backend APIs through a small typed API client under `frontend/lib/api`.
 - Show backend validation errors clearly.
 - Avoid direct database access.
 - Avoid scoring, locking, and bracket progression logic.
+- Use responsive, mobile-first layouts.
+- Keep Tailwind usage component-scoped and avoid one-off visual drift.
+
+## Frontend/Backend Contract
+
+The API contract is owned by the architect and defined in `docs/api.md`.
+
+Frontend promises:
+
+- Call only documented `/api/v1` endpoints.
+- Send access tokens using `Authorization: Bearer <token>`.
+- Treat backend error responses as the source of truth for validation and authorization messages.
+- Never calculate scoring, prediction locks, rankings, or bracket progression.
+- Never connect directly to PostgreSQL.
+
+Backend promises:
+
+- Preserve documented endpoint names, request bodies, response bodies, and error format unless the API contract is reviewed.
+- Enforce authorization and business rules independently of frontend behavior.
+- Return predictable status codes and machine-readable error codes.
+- Keep OAuth client secrets server-side only.
+
+Contract changes require:
+
+1. Update `docs/api.md`.
+2. Review by architect.
+3. Backend implementation.
+4. Frontend adaptation.
+5. Smoke test of affected flow.
 
 ### Initial Screens
 
-- Dashboard: active pools, next locked matches, recent points changes.
-- Pools: create pool, join pool by invite code, participant list.
+- Dashboard: active pools, selected pool summary, participant count, and next matches.
+- Pools: create pool, join pool by invite code, participant list, invite-code actions for owners.
 - Predictions: match list by round, prediction forms for unlocked matches, read-only state for locked/completed matches.
 - Rankings: pool ranking table with points and prediction counts.
 - Profile: user display name and account details.
+
+### Frontend Implementation Notes
+
+- Do not move scoring, lock, ranking, bracket, or membership rules into the frontend.
+- Reuse the existing REST API contract.
+- Keep route-level data loading close to pages and shared request logic in `frontend/lib/api`.
+- Keep auth callback behavior compatible with `/api/v1/auth/google/start`, `/api/v1/auth/google/callback`, and `/api/v1/auth/exchange`.
+
+## Reconciliation Findings
+
+Open architecture/API/database questions are tracked as follow-up work rather
+than being silently changed in code:
+
+- Backend: ranking tie-breakers in implementation currently sort by total points, exact scores, correct winners, then display name; `docs/database.md` originally recommended earliest joined participant as the final tie-breaker.
+- Backend/API: pool update currently returns the pool detail shape without `is_active`, while the API contract example includes `is_active`.
+- Backend/API: admin `PATCH /api/v1/admin/matches/{match_id}` is currently a match-completion endpoint accepting scores and winner only; the API text describes broader schedule/team/status updates.
+- Backend/API: `POST /api/v1/admin/matches/{match_id}/rescore` currently returns `MatchRead`; the contract should explicitly approve that response or define a scoring-specific response.
+- Database: several invariants are enforced in services rather than database constraints, including completed-match winner/scores, final `next_match_id` rules, and pool/match tournament consistency for predictions.
+- DevOps/Backend: `.env.example` sets `GOOGLE_REDIRECT_URI` to the frontend host with the backend callback path, while Docker Compose uses the backend host callback. The backend-owned OAuth callback contract should be confirmed and the environment examples aligned.
+- DevOps/Backend: `app/config/settings.py` default frontend origin still references the older `localhost:8501`; runtime examples override this to `localhost:3000`, but defaults should be cleaned up by the owning specialist.
+
+These gaps do not require an architecture redesign. They require contract
+decisions and focused Backend, Frontend, or DevOps follow-up tasks before the
+Reviewer can recommend merge or production readiness.
 
 ## Security Model
 
@@ -266,7 +473,7 @@ frontend/
 ## Deployment Overview
 
 - Render service 1: FastAPI backend web service.
-- Render service 2: Streamlit frontend web service.
+- Render service 2: Next.js frontend web service.
 - Neon: managed PostgreSQL project.
 - Google Cloud Console: OAuth client with backend callback URL and frontend redirect URL allowlists.
 
@@ -287,17 +494,18 @@ worldcup-pool-api
 
 worldcup-pool-web
   runtime: Docker or Python
-  process: Streamlit app
-  start command example: streamlit run frontend/app.py --server.address 0.0.0.0 --server.port $PORT
+  process: Next.js app
+  build command example: npm ci && npm run build
+  start command example: npm run start -- --hostname 0.0.0.0 --port $PORT
 ```
 
-Use Docker for reproducible production builds once the project has dependencies and entrypoints. Native Render Python services are acceptable during early MVP development, but Docker should be the production target because it keeps local and cloud runtime behavior closer.
+Use Docker for reproducible production builds once the project has dependencies and entrypoints. Native Render services are acceptable during early MVP development, but Docker should be the production target because it keeps local and cloud runtime behavior closer.
 
 ### Neon Database
 
 Create one Neon project for production and use a PostgreSQL connection string exposed as `DATABASE_URL` to the backend. Neon connection strings should require SSL. Use separate Neon branches or separate projects for development/staging if collaborative testing needs isolated data.
 
-The Streamlit service must not receive `DATABASE_URL`.
+The frontend service must not receive `DATABASE_URL`.
 
 ### Required Environment Variables
 
@@ -320,6 +528,7 @@ ENVIRONMENT=production
 Frontend:
 
 ```text
+NEXT_PUBLIC_API_BASE_URL=
 API_BASE_URL=
 FRONTEND_BASE_URL=
 ENVIRONMENT=production
@@ -341,7 +550,8 @@ The backend `/health` endpoint should validate:
 - Required settings loaded successfully.
 - A lightweight database query succeeds.
 
-Render should be configured with HTTP health checks against `/health`. The frontend can rely on Render's default web service check initially, but a lightweight Streamlit health route or separate readiness check can be added later if needed.
+Render should be configured with HTTP health checks against `/health` for both
+the backend and the Next.js frontend.
 
 ### Migrations
 
@@ -374,7 +584,7 @@ Initial release runbook:
 2. Create backend Render service and configure backend environment variables.
 3. Run migrations against Neon.
 4. Confirm `/health` returns `200`.
-5. Create frontend Render service and set `API_BASE_URL`.
+5. Create frontend Render service and set `NEXT_PUBLIC_API_BASE_URL`.
 6. Configure Google OAuth callback URLs using the deployed backend and frontend URLs.
 7. Perform smoke test: login, create pool, join pool, submit prediction, enter result, verify ranking.
 

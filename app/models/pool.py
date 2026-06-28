@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, UniqueConstraint
@@ -7,6 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.enums import ParticipantStatus, PoolRole
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.match import enum_values
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Pool(UUIDPrimaryKeyMixin, TimestampMixin, Base):
