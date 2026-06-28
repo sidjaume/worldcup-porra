@@ -37,6 +37,20 @@ class AdminService:
         self._require_admin(admin_email)
         if self.tournaments.get_tournament(tournament_id) is None:
             raise NotFoundError("Tournament not found.")
+        self._validate_team_in_tournament(
+            team_id=home_team_id,
+            tournament_id=tournament_id,
+            label="Home team",
+        )
+        self._validate_team_in_tournament(
+            team_id=away_team_id,
+            tournament_id=tournament_id,
+            label="Away team",
+        )
+        self._validate_next_match(
+            next_match_id=next_match_id,
+            tournament_id=tournament_id,
+        )
         if next_match_id is not None and next_match_slot is None:
             raise ValidationError("Next match slot is required when next match is set.")
         if (
@@ -127,6 +141,35 @@ class AdminService:
         allowed = {item.lower() for item in self.settings.admin_emails}
         if email.lower() not in allowed:
             raise ForbiddenError("Admin access is required.")
+
+    def _validate_team_in_tournament(
+        self,
+        *,
+        team_id: UUID | None,
+        tournament_id: UUID,
+        label: str,
+    ) -> None:
+        if team_id is None:
+            return
+        team = self.tournaments.get_team(team_id)
+        if team is None:
+            raise NotFoundError(f"{label} not found.")
+        if team.tournament_id != tournament_id:
+            raise ValidationError(f"{label} does not belong to this tournament.")
+
+    def _validate_next_match(
+        self,
+        *,
+        next_match_id: UUID | None,
+        tournament_id: UUID,
+    ) -> None:
+        if next_match_id is None:
+            return
+        next_match = self.tournaments.get_match(next_match_id)
+        if next_match is None:
+            raise NotFoundError("Next match not found.")
+        if next_match.tournament_id != tournament_id:
+            raise ValidationError("Next match does not belong to this tournament.")
 
     @staticmethod
     def _winner_from_score(

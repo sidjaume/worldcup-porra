@@ -28,6 +28,9 @@ class TournamentsRepository:
             )
         )
 
+    def get_team(self, team_id: UUID) -> Team | None:
+        return self.db.get(Team, team_id)
+
     def list_matches(
         self,
         tournament_id: UUID,
@@ -57,4 +60,3 @@ class TournamentsRepository:
             )
             .where(Match.id == match_id)
         )
-
