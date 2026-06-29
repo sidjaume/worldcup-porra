@@ -67,10 +67,17 @@ Checks:
 - Python dependency installation.
 - Ruff linting.
 - Python compilation.
-- Backend and frontend test suites.
+- Backend test suite, including migration smoke and repository integration tests
+  against a PostgreSQL service database.
+- Frontend test suite.
 - Docker Compose configuration validation.
 - Backend Docker image build.
 - Frontend Docker image build.
+
+The backend CI job provisions PostgreSQL 16 with a disposable non-secret
+`DATABASE_URL`/`TEST_DATABASE_URL` and `ENVIRONMENT=test`. Integration tests
+continue to skip safely outside CI when no safe local or explicit test database
+is configured.
 
 Render is configured with `autoDeployTrigger: checksPass`, so services deploy
 from the linked branch only after GitHub checks pass.

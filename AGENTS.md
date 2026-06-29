@@ -313,6 +313,19 @@ Prefer:
 - Unit tests
 - Integration tests
 
+## Windows Node/NPM Tooling
+
+On Windows, AI agents may run in a shell that does not inherit recently updated
+user PATH values. If frontend checks cannot find Node or NPM, first use the
+project-standard PowerShell prefix:
+
+```powershell
+$env:Path = 'C:\Program Files\nodejs;' + "$env:APPDATA\npm;" + $env:Path
+```
+
+Then invoke NPM as `npm.cmd`, not bare `npm`, because PowerShell may prefer
+`npm.ps1` and block it under the local execution policy.
+
 ---
 
 # Documentation

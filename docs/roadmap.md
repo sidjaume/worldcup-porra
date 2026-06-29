@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: MVP implementation slices exist; REV-002 completed with changes requested; production configuration remains blocked on external accounts and secrets.
+Status: MVP implementation slices exist; REV-002 follow-up work is approved and archived; production configuration remains blocked on external accounts and secrets.
 Last reconciled: 2026-06-29.
 
 Implementation has already begun. This roadmap now describes the intended
@@ -43,9 +43,9 @@ Each phase should finish with:
 
 Current gate status:
 
-- Architecture/API/database/roadmap reconciliation: pending final approval under ORCH-001.
-- Focused production-readiness review: REV-002 completed with changes requested.
-- Required follow-up: DEVOPS-003 in `docs/backlog.md`; BE-006 and FE-007 are implemented and pending validation.
+- Architecture/API/database/roadmap reconciliation: approved with comments under ORCH-001.
+- Focused production-readiness review: REV-002 completed with changes requested; split follow-ups are approved and archived.
+- Historical follow-up: FE-007 is approved with comments, ORCH-001 is approved with comments, BE-006/DEVOPS-003 are approved, and ARCH-003 is accepted. DATA-EPIC-001 is ready for implementation sequencing starting with BE-005.
 - Production deployment: blocked until Render, Neon, Google OAuth, and secrets are configured outside the repository.
 - OAuth/environment alignment: completed under DEVOPS-001.
 
@@ -123,7 +123,7 @@ tracked as `BE-001` in `docs/backlog.md`.
 
 ## Phase 3: Authentication
 
-Status: Implemented initial slice; OAuth configuration audit completed; pending REV-002 follow-up and re-review.
+Status: Implemented initial slice; OAuth configuration audit completed; REV-002 follow-up work is approved and archived.
 
 Deliverables:
 
@@ -215,6 +215,8 @@ Tests:
 - Rescoring is idempotent.
 - Winner advances to configured next match slot.
 - Ranking tie-breakers are deterministic.
+- Penalty-decided matches preserve the tied end-of-play score while still
+  recording the advancing winner.
 
 Acceptance criteria:
 
@@ -268,15 +270,18 @@ external accounts, OAuth client configuration, and production secrets exist.
 
 ## Phase 9: Hardening and Polish
 
-Status: Planned/deferred. World Cup knockout data operations are now tracked as
-`DATA-EPIC-001` in `docs/backlog.md` and should begin with the `ARCH-003`
-provider/contract decision.
+Status: Planned/deferred. World Cup knockout data operations are tracked as
+`DATA-EPIC-001` in `docs/backlog.md`; `ARCH-003` now defines the target
+contract and implementation order.
 
 Deliverables:
 
 - Rate limits for auth and invite-code endpoints.
 - Admin tooling for bracket corrections.
-- Approved knockout data provider or manual/official import strategy.
+- Official/manual bracket seed plus one approved provider adapter for
+  operational updates.
+- Preferred initial free candidate: `rezarahiminia/worldcup2026`, consumed
+  through project-controlled import or self-hosted adapter flow.
 - Scheduled synchronization for kickoff times, teams, match status, and results.
 - Manual fallback workflow for correcting match data and triggering rescoring.
 - Better audit trail for match result changes.
@@ -289,6 +294,16 @@ Acceptance criteria:
 - Common abuse cases are handled.
 - Operational recovery steps are documented.
 - Tournament data sync is idempotent, observable, and recoverable during match days.
+
+Operational contract from ARCH-003:
+
+- Seed the bracket from an official or manually curated source under project
+  control.
+- Use provider updates for operational freshness, not as the only path to
+  correctness.
+- Allow admin overrides with auditability.
+- Score penalty-decided matches from end-of-play goals while using
+  `winner_team_id` for advancement and correct-winner points.
 
 ## Suggested MVP Milestones
 
@@ -348,7 +363,6 @@ Status: Planned/deferred.
 
 ## Open Questions
 
-- Should knockout predictions allow draws after regulation time, or should users predict the final official score after extra time/penalties? Current implementation rejects tied completed knockout scores and requires a winner, but the product wording should still be confirmed.
 - Who can administer tournament matches in the first release: an environment-configured admin list, pool owners, or a global admin role? Current implementation uses `ADMIN_EMAILS`.
 - Should invite codes be human-friendly short codes or longer URL-safe tokens? Human-friendly is easier for private groups; longer tokens reduce guessing risk.
 - Should predictions become visible at kickoff or only after the match is completed? Current implementation reveals all match predictions after the match locks, not only after completion.

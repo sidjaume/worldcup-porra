@@ -6,7 +6,7 @@ Last updated: 2026-06-29
 
 Milestone 4: Deployed MVP is in progress.
 
-The repository now contains a working FastAPI backend, Next.js frontend, PostgreSQL schema/migration, Docker Compose local deployment, Render blueprint, and CI workflow. The canonical architecture/API/database/roadmap docs have been reconciled with that implementation state. REV-002 completed with changes requested, so the current state is not ready for merge.
+The repository now contains a working FastAPI backend, Next.js frontend, PostgreSQL schema/migration, Docker Compose local deployment, Render blueprint, and CI workflow. The canonical architecture/API/database/roadmap docs have been reconciled with that implementation state. REV-002's split follow-up tasks were implemented, reviewed, and recorded in the backlog as historical follow-up work.
 
 ## Completed
 
@@ -25,10 +25,16 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - BE-001 repository and migration integration coverage added with optional local/test PostgreSQL fixtures that create throwaway databases and skip safely when unavailable.
 - DOCS-002 roadmap review-gate cleanup completed after REV-002.
 - FE-007 pool creation invite-code and owner-control UX implementation completed.
+- Windows Node/NPM invocation documented in `AGENTS.md` and `docs/environment.md`.
+- ORCH-001 `POST /api/v1/pools` contract correction approved by Reviewer with comments.
+- BE-006 inactive-pool reactivation UX fix approved by Reviewer.
+- DEVOPS-003 CI coverage for DB and repository integration tests approved by Reviewer.
+- ARCH-003 accepted for knockout data source and result semantics.
+- ARCH-003 selects `rezarahiminia/worldcup2026` as the preferred initial free data-source candidate for DATA-EPIC-001, with import/self-hosting preferred over blind public-host dependency.
 
 ## Verification Evidence
 
-- REV-002 focused production-readiness re-review completed with `CHANGES_REQUESTED`.
+- REV-002 focused production-readiness re-review completed with `CHANGES_REQUESTED`, then its follow-up tasks were approved and the closure review was rerun.
 - Backend lint: `.venv\Scripts\python.exe -m ruff check app tests` passed.
 - Backend integration tests: `.venv\Scripts\python.exe -m pytest tests\db tests\repositories -q` passed, 4 tests.
 - Backend tests: `.venv\Scripts\python.exe -m pytest tests -q` passed, 36 tests.
@@ -36,11 +42,29 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - Current session backend tests: `.\.venv\Scripts\python.exe -m pytest tests -q` passed, 40 tests.
 - BE-006 focused backend tests: worker ran `.venv\Scripts\python.exe -m pytest tests/services/test_pool_service.py tests/api/test_api_contract.py`, 13 tests passed.
 - FE-007 source-level frontend tests were added for create action state, create form invite-code display, invite-code copy panel, and owner-only pool detail controls.
-- Frontend lint: `npm run lint` passed.
-- Frontend tests: `npm test` passed, 8 tests.
-- Frontend typecheck: `npm run typecheck` passed.
-- Frontend production build: previous `npm run build` passed; latest rerun after the most recent frontend/backend changes was not completed because the environment denied the required elevated filesystem access.
-- Current session frontend checks were not run because this shell could not find `node` or `npm` on PATH.
+- Current session frontend lint: `npm.cmd run lint` passed with documented Windows PATH prefix.
+- Current session frontend tests: `npm.cmd test` passed, 13 files and 17 tests.
+- Current session frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- Current session frontend build: `npm.cmd run build` passed after elevated rerun for `.next` writes.
+- ORCH-001 contract check: `.venv\Scripts\python.exe -m pytest tests\api\test_api_contract.py -q` passed, 6 tests.
+- ORCH-001 full backend tests: `.venv\Scripts\python.exe -m pytest tests -q` passed, 41 tests.
+- ORCH-001 focused frontend tests passed with `npm.cmd test -- app/actions.test.ts components/pools/CreatePoolForm.test.ts components/pools/InviteCodeForm.test.ts app/pools/[poolId]/page.test.ts components/pools/PoolSettingsForm.test.ts`.
+- BE-006 UX fix frontend lint: `npm.cmd run lint` passed.
+- BE-006 UX fix focused frontend tests: `npm.cmd test -- app/actions.test.ts components/pools/PoolSettingsForm.test.ts` passed, 2 files and 3 tests.
+- BE-006 UX fix frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- BE-006 UX fix backend checks: Ruff passed and `.venv\Scripts\python.exe -m pytest tests -q` passed, 41 tests.
+- DEVOPS-003 backend lint: `.\.venv\Scripts\python.exe -m ruff check app tests` passed.
+- DEVOPS-003 backend compile check: `.\.venv\Scripts\python.exe -m compileall app tests` passed.
+- DEVOPS-003 updated backend test matrix: `.\.venv\Scripts\python.exe -m pytest tests/api tests/config tests/domain tests/services tests/db tests/repositories -q` passed, 41 tests.
+- DEVOPS-003 workflow YAML parse check passed with `yaml.safe_load`.
+- DEVOPS-003 focused Reviewer decision: `APPROVED`.
+- Pending-review backend lint: `.\.venv\Scripts\python.exe -m ruff check app tests` passed.
+- Pending-review backend tests: `.\.venv\Scripts\python.exe -m pytest tests -q` passed, 41 tests.
+- Pending-review focused frontend tests: `npm.cmd test -- app/actions.test.ts components/pools/PoolSettingsForm.test.ts components/pools/CreatePoolForm.test.ts components/pools/InviteCodeForm.test.ts app/pools/[poolId]/page.test.ts` passed, 5 files and 6 tests.
+- Pending-review frontend lint: `npm.cmd run lint` passed.
+- Pending-review frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- ORCH-001 focused Reviewer decision: `APPROVED WITH COMMENTS`; comment addressed by removing stale verification notes from this status file.
+- BE-006 focused Reviewer decision: `APPROVED`.
 - Local deployment: `docker compose ps` shows `db`, `backend`, and `frontend` running; backend `/health` returned `{"status":"ok","database":"ok"}`; frontend `/health` returned `{"status":"ok"}`.
 - Frontend UX/accessibility follow-up: `npm test` passed, 12 tests; `npm run lint` passed; `npm run typecheck` passed.
 
@@ -50,26 +74,21 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 
 ## Changes Requested
 
-- REV-002 completed with `CHANGES_REQUESTED`.
-- DEVOPS-003: CI coverage for DB and repository integration tests.
+None.
 
 ## Planned
 
-- DATA-EPIC-001 has been added for FIFA World Cup 2026 knockout data operations. The orchestrator should sequence this after REV-002 changes are resolved, starting with ARCH-003 to decide the data source/provider contract before backend, DevOps, admin UX, and frontend implementation begin.
-- Planned task order: ARCH-003 data source and contract decision; BE-005 fixture import/provider sync backend; DEVOPS-002 sync operations; UX-002 admin correction flow; FE-006 admin match data UI; REV-003 full review.
+- Planned execution order for DATA-EPIC-001: BE-005 fixture import/provider sync backend; DEVOPS-002 sync operations; UX-002 admin correction flow; FE-006 admin match data UI; REV-003 full review.
 
 ## Blocked
 
 - Production deployment is blocked until real Render, Neon, and Google OAuth secrets/configuration exist outside the repository.
-- Merge readiness is blocked until REV-002 major findings are fixed and re-reviewed.
 - Local Google OAuth testing is blocked unless Google OAuth credentials are configured. The local backend-owned callback is documented consistently as `http://localhost:8000/api/v1/auth/google/callback`.
+- Provider-backed sync execution for DATA-EPIC-001 still depends on the project owner deciding provider budget/licensing constraints and supplying account credentials.
 
 ## Pending Review
 
-- BE-006 implementation is complete and backend-verified, but frontend validation is pending because this shell cannot run Node/NPM.
-- FE-007 implementation is complete, but frontend validation is pending because this shell cannot run Node/NPM.
-- Fixes for REV-002 findings after DEVOPS-003 is completed.
-- ORCH-001 documentation reconciliation and the remaining documented database/service-enforced invariant gap remain pending final approval.
+None.
 
 ## Architect Findings
 
@@ -80,7 +99,7 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 
 ## Ready For Merge
 
-None. REV-002 requested changes.
+None. REV-002 follow-up work is approved and archived in the backlog.
 
 ## Production Status
 
@@ -88,6 +107,6 @@ Not deployed to production. Local Docker deployment is healthy.
 
 ## Next Recommended Task
 
-Execute DEVOPS-003: CI coverage for DB and repository integration tests.
+Start BE-005 against the `worldcup2026` import/adapter path.
 
-Rationale: BE-006 and FE-007 are implemented and awaiting frontend validation/review. DEVOPS-003 is the remaining unimplemented REV-002 major finding and is needed so CI covers the DB and repository integration tests before re-review.
+Rationale: ARCH-003 is accepted and gives DATA-EPIC-001 a stable architecture, execution order, and realistic free candidate source. BE-005 can now align backend result semantics and build the import/sync adapter.

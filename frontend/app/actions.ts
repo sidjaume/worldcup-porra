@@ -136,7 +136,6 @@ export async function updatePoolAction(
 ): Promise<ActionState> {
   const poolId = String(formData.get("pool_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
-  const isActive = formData.get("is_active") === "on";
 
   if (!poolId || !name) {
     return { error: "Pool name is required." };
@@ -144,7 +143,7 @@ export async function updatePoolAction(
 
   try {
     await withAuthenticatedSession((accessToken) =>
-      updatePool(accessToken, poolId, { is_active: isActive, name }),
+      updatePool(accessToken, poolId, { name }),
     );
     revalidatePath(`/pools/${poolId}`);
     return { ok: true };

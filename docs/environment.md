@@ -32,6 +32,29 @@ Next.js frontend:
 | `API_BASE_URL` | Yes | `https://api.example.com` | Server-side backend URL used by Next.js server components and routes. In Docker Compose this is `http://backend:8000`. |
 | `FRONTEND_BASE_URL` | Yes | `https://app.example.com` | Public frontend URL used for OAuth redirect construction. |
 
+## Windows Node/NPM PATH
+
+If Node.js is installed but `node` or `npm` are not visible from the project
+PowerShell session, the terminal likely started before the Windows PATH update
+was inherited. For this repository, use this prefix before frontend commands:
+
+```powershell
+$env:Path = 'C:\Program Files\nodejs;' + "$env:APPDATA\npm;" + $env:Path
+```
+
+Run NPM through `npm.cmd`:
+
+```powershell
+cd frontend
+npm.cmd run lint
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run build
+```
+
+Use `npm.cmd` instead of bare `npm` because PowerShell may resolve `npm.ps1`
+first and block it when script execution is disabled.
+
 ## Local `.env`
 
 Use `.env.example` as the template:

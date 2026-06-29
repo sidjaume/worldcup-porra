@@ -73,6 +73,32 @@ def test_pool_update_response_schema_matches_contract() -> None:
     assert set(pool_update_response["properties"]) == {"id", "name", "is_active"}
 
 
+def test_pool_created_response_schema_matches_contract() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    pool_created_response = schemas["PoolCreated"]
+    assert pool_created_response["required"] == [
+        "id",
+        "name",
+        "tournament_id",
+        "role",
+        "participant_count",
+        "created_at",
+        "invite_code",
+    ]
+    assert set(pool_created_response["properties"]) == {
+        "id",
+        "name",
+        "tournament_id",
+        "role",
+        "participant_count",
+        "created_at",
+        "invite_code",
+    }
+
+
 def test_pool_detail_response_schema_includes_active_state() -> None:
     response = TestClient(app).get("/openapi.json")
 

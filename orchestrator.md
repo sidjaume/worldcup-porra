@@ -56,7 +56,7 @@ Relevant files may include:
 ```text
 AGENTS.md
 orchestrator.md
-agents/
+.agents/
 ├── architect.md
 ├── backend.md
 ├── frontend.md

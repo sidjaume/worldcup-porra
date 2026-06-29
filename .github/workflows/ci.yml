@@ -11,6 +11,26 @@ jobs:
     name: Backend checks
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: worldcup
+          POSTGRES_PASSWORD: worldcup
+          POSTGRES_DB: worldcup_pool
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U worldcup -d worldcup_pool"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://worldcup:worldcup@localhost:5432/worldcup_pool
+      TEST_DATABASE_URL: postgresql+psycopg://worldcup:worldcup@localhost:5432/worldcup_pool
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -33,7 +53,7 @@ jobs:
         run: python -m compileall app tests
 
       - name: Run backend tests
-        run: python -m pytest tests/api tests/domain tests/services
+        run: python -m pytest tests/api tests/config tests/domain tests/services tests/db tests/repositories
 
   docker:
     name: Docker build

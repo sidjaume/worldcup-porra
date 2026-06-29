@@ -301,6 +301,8 @@ Response:
   "name": "Office Pool",
   "tournament_id": "uuid",
   "role": "owner",
+  "participant_count": 1,
+  "created_at": "2026-06-28T17:00:00Z",
   "invite_code": "ABCD-1234"
 }
 ```

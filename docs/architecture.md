@@ -138,6 +138,22 @@ Rationale:
 The earlier Streamlit prototype has been removed. Product-facing frontend work
 targets the Next.js structure below.
 
+### ADR ARCH-003: Knockout Data Source and Result Contract
+
+Decision: Use a hybrid tournament data-operations model with official/manual
+bracket seed, one approved provider integration for operational updates, admin
+fallback for correction workflows, and no scraping as the primary production
+dependency.
+
+Knockout scoring semantics are:
+
+- scores are interpreted at the end of play, after regular time or extra time
+- penalty shoot-out goals are excluded from exact-score and team-goal scoring
+- a completed knockout match may have tied goals and still require an explicit
+  `winner_team_id` when the winner advances on penalties
+
+Authoritative decision record: [ARCH-003 ADR](./decisions/arch-003-knockout-data-source-and-result-contract.md)
+
 ## Backend Module Structure
 
 Current implemented structure:
@@ -261,7 +277,8 @@ Domain invariants:
 - A user must be an active pool participant to submit or view pool-specific data.
 - Predictions cannot be created or edited after backend lock time.
 - Scoring is calculated by the domain scoring engine, not by UI code.
-- A completed knockout match must have a winner.
+- A completed knockout match must have a `winner_team_id`, even when the
+  end-of-play score is tied and the winner is decided on penalties.
 - Winner progression uses explicit `next_match_id` and `next_match_slot` links.
 - Rankings are derived from scores and must not be manually edited.
 
@@ -289,6 +306,16 @@ Default scoring:
 - One exact team goal count: 1 additional point per matching team goal count
 
 Exact score implies both goal counts are correct, but the MVP rule awards only the exact-score bonus, not two partial bonuses on top of exact score. A Spain 3-1 prediction for an actual Spain 3-1 result is therefore 4 total points.
+
+Knockout result interpretation for scoring:
+
+- Predictions compare against the score at the end of play: after 90 minutes if
+  there is a winner, or after extra time if extra time is played.
+- Penalty shoot-out goals are not added to `home_score` or `away_score` for
+  scoring purposes.
+- Correct-winner points are based on the advancing `winner_team_id`.
+- Exact-score and single-team-goal bonuses are based on the end-of-play score,
+  even if that score is tied.
 
 ### Prediction Locking
 
@@ -441,6 +468,12 @@ than being silently changed in code. ARCH-002 settled the admin match
 completion/rescore contract and ranking final tie-breaker, and Backend aligned
 the pool update response with the API contract.
 
+ARCH-003 settles the knockout data-operations strategy and the scoring
+semantics for penalty-decided matches. The current backend implementation still
+assumes a completed knockout result cannot be tied; Backend follow-up work must
+align the implementation with the approved decision record before production
+release.
+
 - Database: several invariants are enforced in services rather than database constraints, including completed-match winner/scores, final `next_match_id` rules, and pool/match tournament consistency for predictions.
 These gaps do not require an architecture redesign. They require contract
 decisions and focused Backend, Frontend, or DevOps follow-up tasks before the
@@ -464,6 +497,14 @@ Reviewer can recommend merge or production readiness.
 - Production uses a PostgreSQL connection string from Neon with SSL required.
 - Docker images should run without local filesystem persistence.
 - All timestamps are stored in UTC.
+
+Tournament data operations must follow the ARCH-003 boundary:
+
+- seed the knockout bracket from an official or manually curated source under
+  project control
+- normalize provider payloads inside backend application services
+- support admin correction/override flows without bypassing auditability
+- avoid scraping as an application dependency
 
 ## Deployment Overview
 

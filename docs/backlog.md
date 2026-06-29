@@ -4,84 +4,9 @@ Last updated: 2026-06-29
 
 ## PENDING_REVIEW
 
-### ORCH-001: Architecture and Contract Reconciliation
-
-- Owner: Architect
-- Supporting agents: None for first pass
-- Status: PENDING_REVIEW
-- Dependencies: Current repository status inspection
-- Acceptance criteria: `docs/architecture.md`, `docs/api.md`, `docs/database.md`, and `docs/roadmap.md` accurately reflect the current implementation status; unresolved contract gaps are documented as follow-up tasks; no specialist implementation is bundled into the reconciliation.
-- Risk: Medium
-
-### BE-006: Pool Active-State Contract and Authorization Fix
-
-- Owner: Backend
-- Supporting agents: Architect, Frontend, Reviewer
-- Status: PENDING_REVIEW
-- Dependencies: REV-002 findings
-- Acceptance criteria: Pool detail responses expose the active state or the contract is intentionally revised; inactive pools are not treated as usable member pools unless explicitly allowed by a documented rule; frontend types and UI do not guess missing active state; affected backend/frontend tests are updated.
-- Risk: Medium
-- Completion evidence: Implementation is complete. `PoolDetail` now includes `is_active`; normal member access rejects inactive pools; owner update can reactivate inactive pools; frontend `PoolDetail.is_active` is required and `PoolSettingsForm` uses the explicit value. Backend Ruff passed and `.venv\Scripts\python.exe -m pytest tests -q` passed with 40 tests. Frontend checks are still pending because `node` and `npm` are unavailable in this shell.
-
-### FE-007: Pool Creation Invite-Code and Owner-Control UX Fix
-
-- Owner: Frontend
-- Supporting agents: Backend, Product Designer, Reviewer
-- Status: PENDING_REVIEW
-- Dependencies: REV-002 findings; existing pool create/rotate invite API contract.
-- Objective: Ensure a newly created pool owner can see and copy the initial invite code, and hide or disable owner-only controls for non-owners.
-- Context: REV-002 found that `createPoolAction` redirects using only `pool.id`, so the initial invite code returned by the backend is lost. It also found owner-only pool controls render for all members even though backend authorization blocks non-owners.
-- Relevant files: `frontend/app/actions.ts`, `frontend/app/pools/[poolId]/page.tsx`, `frontend/components/pools/InviteCodeForm.tsx`, `frontend/components/pools/PoolSettingsForm.tsx`, `frontend/components/pools/ParticipantList.tsx`, `frontend/types/api.ts`.
-- Acceptance criteria: After pool creation, the owner can immediately view/copy the initial invite code without rotating it; non-owners do not see misleading owner-only controls; backend remains the authorization source of truth; loading/error/success feedback remains accessible.
-- Required tests: Frontend action/component tests for create-pool invite-code handling and role-based owner controls.
-- Documentation updates: `docs/frontend.md` if the user flow changes materially.
-- Risk: Medium
-- Completion evidence: Implementation is complete. `createPoolAction` returns the created pool id and initial invite code; `CreatePoolForm` displays the initial invite code with copy feedback and an `Open pool` link; invite-code copy UI is shared with rotation; pool detail hides invite-code rotation and pool settings for non-owners. Backend checks passed; frontend checks are still pending because `node` and `npm` are unavailable in this shell.
-
-## CHANGES_REQUESTED
-
-### DEVOPS-003: CI Coverage for DB and Repository Integration Tests
-
-- Owner: DevOps
-- Supporting agents: Backend, Reviewer
-- Status: CHANGES_REQUESTED
-- Dependencies: REV-002 findings; BE-001 integration tests.
-- Objective: Ensure CI runs the migration and repository integration tests that were added for BE-001.
-- Context: REV-002 found that `.github/workflows/ci.yml` runs only `tests/api tests/domain tests/services`, leaving `tests/db` and `tests/repositories` out of CI.
-- Relevant files: `.github/workflows/ci.yml`, `tests/conftest.py`, `tests/db/`, `tests/repositories/`.
-- Acceptance criteria: CI provisions or otherwise targets a PostgreSQL test database for integration tests, runs `tests/db` and `tests/repositories`, and still skips safely only when intentionally configured outside CI.
-- Required tests: CI workflow validation plus local command evidence for the updated backend test matrix where practical.
-- Documentation updates: `docs/infrastructure.md` or `docs/deployment.md` if CI setup requirements change.
-- Risk: Medium
+None.
 
 ## PLANNED
-
-### DATA-EPIC-001: World Cup 2026 Knockout Data Operations
-
-- Owner: Orchestrator
-- Supporting agents: Architect, Backend, DevOps, Product Designer, Frontend, Reviewer
-- Status: PLANNED
-- Dependencies: REV-002 changes resolved; product decision on data provider budget and licensing.
-- Objective: Define and implement a reliable way to load the FIFA World Cup 2026 knockout bracket, keep kickoff times/results updated, lock predictions safely, score finished matches, and provide manual admin fallback.
-- Scope: Round of 32, Round of 16, quarter-finals, semi-finals, final. Third-place match remains out of MVP scope unless explicitly added.
-- Out of scope: Group-stage management, qualification calculations, league standings, and scraping as a primary production data source.
-- Acceptance criteria: The app can initialize knockout fixtures, sync teams/times/results from an approved source, audit changes, handle provider failure through admin fallback, and recalculate scoring idempotently after finished matches.
-- Risk: High
-
-### ARCH-003: Knockout Data Source and Contract Decision
-
-- Owner: Architect
-- Supporting agents: Backend, DevOps, Reviewer
-- Status: PLANNED
-- Dependencies: DATA-EPIC-001; provider options and cost/licensing constraints from the user or project owner.
-- Objective: Select the production approach for tournament data ingestion and document the contract boundaries.
-- Context: Recommended strategy is a hybrid model: official/manual schedule seed, paid or approved sports data provider for results and time changes, and admin fallback. Scraping should not be the primary production dependency.
-- Relevant files: `docs/architecture.md`, `docs/api.md`, `docs/database.md`, `docs/roadmap.md`, `docs/decisions/`.
-- Expected deliverables: ADR for data source strategy; canonical internal match/team/result status model; provider abstraction contract; decision on whether exact-score predictions use 90-minute score, extra-time score, or final score excluding penalties.
-- Acceptance criteria: Trade-offs are documented; selected approach respects modular monolith boundaries; frontend/backend API impact is clear; follow-up tasks are unblocked.
-- Required tests: None for decision-only work.
-- Documentation updates: Architecture, API/database notes, roadmap, and a new ADR if the selected provider or abstraction has long-term impact.
-- Risk: High
 
 ### BE-005: Knockout Fixture Import and Provider Sync Backend
 
@@ -89,11 +14,11 @@ Last updated: 2026-06-29
 - Supporting agents: Architect, DevOps
 - Status: PLANNED
 - Dependencies: ARCH-003 approved contract.
-- Objective: Implement backend services and repositories to import knockout fixtures, map external provider IDs, sync kickoff times/teams/results, and persist audit metadata.
+- Objective: Implement backend services and repositories to import knockout fixtures, map external provider IDs, sync kickoff times/teams/results, align completed-match semantics with ARCH-003, and persist audit metadata.
 - Context: Business rules remain in the Domain/Application layers. API routers must stay thin. Sync operations must be idempotent and safe to rerun.
 - Relevant files: `app/domain/`, `app/services/`, `app/repositories/`, `app/models/`, `app/api/routers/tournaments.py`, `app/api/routers/admin.py`, `app/db/migrations/`, `scripts/`.
-- Expected deliverables: Provider adapter interface; fixture/result sync service; external ID mapping; match audit fields or table; Alembic migration; seed/update command for knockout bracket; tests.
-- Acceptance criteria: Running sync twice does not duplicate matches or points; provider status values are normalized to internal enums; kickoff changes preserve prediction-lock rules; finished matches trigger idempotent scoring/progression; failed provider calls do not corrupt existing data.
+- Expected deliverables: Provider adapter interface; fixture/result sync service; external ID mapping; match audit fields or table; Alembic migration; seed/update command for knockout bracket; normalization for tied completed scores with explicit `winner_team_id`; import/filter path for the knockout subset from the chosen provider candidate; tests.
+- Acceptance criteria: Running sync twice does not duplicate matches or points; provider status values are normalized to internal enums; kickoff changes preserve prediction-lock rules; completed matches may persist tied end-of-play scores together with an advancing winner; finished matches trigger idempotent scoring/progression; failed provider calls do not corrupt existing data.
 - Required tests: Domain/service unit tests, repository integration tests, API/admin tests where endpoints change, migration smoke test.
 - Documentation updates: `docs/api.md`, `docs/database.md`, and `docs/roadmap.md`.
 - Risk: High
@@ -156,6 +81,42 @@ Last updated: 2026-06-29
 - Risk: High
 
 ## DONE
+
+### ARCH-003: Knockout Data Source and Contract Decision
+
+- Owner: Architect
+- Supporting agents: Backend, DevOps, Reviewer
+- Status: DONE
+- Dependencies: DATA-EPIC-001 architecture/planning clarification
+- Objective: Select the production approach for tournament data ingestion and document the contract boundaries.
+- Context: Accepted in ADR form as a hybrid model: official/manual bracket seed, approved provider-assisted operational updates, and admin fallback. Scraping is explicitly rejected as the primary production dependency.
+- Relevant files: `docs/architecture.md`, `docs/api.md`, `docs/database.md`, `docs/roadmap.md`, `docs/decisions/`.
+- Expected deliverables: ADR for data source strategy; canonical internal match/team/result semantics; provider abstraction contract; explicit scoring rule for penalty-decided matches.
+- Acceptance criteria: Trade-offs are documented; selected approach respects modular monolith boundaries; frontend/backend API impact is clear; follow-up tasks are unblocked.
+- Required tests: None for decision-only work.
+- Documentation updates: Architecture, API/database notes, roadmap, and a new ADR if the selected provider or abstraction has long-term impact.
+- Risk: High
+- Completion evidence: Reviewer approved ARCH-003 with comments. Added [ARCH-003 ADR](./decisions/arch-003-knockout-data-source-and-result-contract.md) as an accepted decision record. The decision uses a hybrid seed-plus-provider-plus-admin model, defines scoring semantics as end-of-play goals plus explicit advancing winner, excludes penalty shoot-out goals from exact-score evaluation, and evaluates `rezarahiminia/worldcup2026` as the preferred initial free provider candidate through import/self-hosting rather than blind dependency on its public host.
+
+### ORCH-001: Architecture and Contract Reconciliation
+
+- Owner: Architect
+- Supporting agents: None for first pass
+- Status: DONE
+- Dependencies: Current repository status inspection
+- Acceptance criteria: `docs/architecture.md`, `docs/api.md`, `docs/database.md`, and `docs/roadmap.md` accurately reflect the current implementation status; unresolved contract gaps are documented as follow-up tasks; no specialist implementation is bundled into the reconciliation.
+- Risk: Medium
+- Completion evidence: Reviewer approved ORCH-001 with comments. Corrected `POST /api/v1/pools` contract reconciliation after Reviewer finding. `docs/api.md`, frontend `CreatePoolResponse`, and OpenAPI `PoolCreated` now include `participant_count` and `created_at`. Added OpenAPI contract coverage. Backend contract test passed, full backend tests passed with 41 tests, focused frontend tests passed, and frontend typecheck passed with documented `npm.cmd` invocation.
+
+### BE-006: Pool Active-State Contract and Authorization Fix
+
+- Owner: Backend
+- Supporting agents: Architect, Frontend, Reviewer
+- Status: DONE
+- Dependencies: REV-002 findings
+- Acceptance criteria: Pool detail responses expose the active state or the contract is intentionally revised; inactive pools are not treated as usable member pools unless explicitly allowed by a documented rule; frontend types and UI do not guess missing active state; affected backend/frontend tests are updated.
+- Risk: Medium
+- Completion evidence: Reviewer approved BE-006. Removed the pool active toggle from `PoolSettingsForm` until an inactive-pool management view exists, and changed `updatePoolAction` to update only the pool name from that form. This prevents owners from deactivating a pool through the normal detail page and losing the UI path back. Frontend lint passed; focused frontend tests passed; frontend typecheck passed with documented `npm.cmd` invocation; backend Ruff passed; backend tests passed with 41 tests.
 
 ### FE-002: Mobile Navigation and Page Context
 
@@ -252,6 +213,31 @@ Last updated: 2026-06-29
 - Risk: Low
 - Completion evidence: Updated roadmap gate status to record REV-002 changes requested and DEVOPS-001 OAuth/environment audit completion.
 
+### FE-007: Pool Creation Invite-Code and Owner-Control UX Fix
+
+- Owner: Frontend
+- Supporting agents: Backend, Product Designer, Reviewer
+- Dependencies: REV-002 findings; existing pool create/rotate invite API contract.
+- Acceptance criteria: After pool creation, the owner can immediately view/copy the initial invite code without rotating it; non-owners do not see misleading owner-only controls; backend remains the authorization source of truth; loading/error/success feedback remains accessible.
+- Status: DONE
+- Risk: Medium
+- Completion evidence: Reviewer approved FE-007 with comments. `createPoolAction` returns the created pool id and initial invite code; `CreatePoolForm` displays the initial invite code with copy feedback and an `Open pool` link; invite-code copy UI is shared with rotation; pool detail hides invite-code rotation and pool settings for non-owners. Frontend lint, tests, typecheck, and build passed using the documented Windows `npm.cmd` invocation.
+
+### DEVOPS-003: CI Coverage for DB and Repository Integration Tests
+
+- Owner: DevOps
+- Supporting agents: Backend, Reviewer
+- Status: DONE
+- Dependencies: REV-002 findings; BE-001 integration tests.
+- Objective: Ensure CI runs the migration and repository integration tests that were added for BE-001.
+- Context: REV-002 found that `.github/workflows/ci.yml` ran only `tests/api tests/domain tests/services`, leaving `tests/db` and `tests/repositories` out of CI.
+- Relevant files: `.github/workflows/ci.yml`, `tests/conftest.py`, `tests/db/`, `tests/repositories/`.
+- Acceptance criteria: CI provisions or otherwise targets a PostgreSQL test database for integration tests, runs `tests/db` and `tests/repositories`, and still skips safely only when intentionally configured outside CI.
+- Required tests: CI workflow validation plus local command evidence for the updated backend test matrix where practical.
+- Documentation updates: `docs/infrastructure.md`.
+- Risk: Medium
+- Completion evidence: Reviewer approved DEVOPS-003. Backend CI now provisions a PostgreSQL 16 service with a non-secret test database URL, sets `ENVIRONMENT=test`, and runs `tests/api tests/config tests/domain tests/services tests/db tests/repositories` so migration smoke tests and repository integration tests are included. Local Ruff, compileall, workflow YAML parse, and the updated backend pytest matrix passed; pytest reported 41 passed.
+
 ## COMPLETED_REVIEW
 
 ### UX-001: Product Designer Usability and Accessibility Pass
@@ -270,9 +256,9 @@ Last updated: 2026-06-29
 - Supporting agents: Architect
 - Dependencies: DONE technical fixes and UX findings converted into frontend tasks
 - Acceptance criteria: Review decision is recorded as `APPROVED`, `APPROVED WITH COMMENTS`, or `CHANGES_REQUESTED`; findings are classified by severity with file references and required follow-up owners.
-- Status: CHANGES_REQUESTED
+- Status: DONE
 - Risk: Medium
-- Completion evidence: Reviewer decision was `CHANGES_REQUESTED`. Major findings were split into BE-006, FE-007, and DEVOPS-003; minor documentation cleanup was split into DOCS-002.
+- Completion evidence: Reviewer decision was `CHANGES_REQUESTED`. Major findings were split into BE-006, FE-007, and DEVOPS-003; minor documentation cleanup was split into DOCS-002. Follow-up implementations were later approved, and the closure review was rerun so the parent record can be closed coherently.
 
 ### REV-001: Independent Production-Readiness Review
 
@@ -282,6 +268,23 @@ Last updated: 2026-06-29
 - Acceptance criteria: Review decision is recorded as `APPROVED`, `APPROVED WITH COMMENTS`, or `CHANGES_REQUESTED`; findings are classified by severity with file references and required follow-up owners.
 - Status: CHANGES_REQUESTED
 - Risk: Medium
+
+## PLANNED_EPICS
+
+### DATA-EPIC-001: World Cup 2026 Knockout Data Operations
+
+- Owner: Orchestrator
+- Supporting agents: Architect, Backend, DevOps, Product Designer, Frontend, Reviewer
+- Status: PLANNED
+- Dependencies: ARCH-003 approved.
+- Objective: Define and implement a reliable way to load the FIFA World Cup 2026 knockout bracket, keep kickoff times/results updated, lock predictions safely, score finished matches, and provide manual admin fallback.
+- Scope: Round of 32, Round of 16, quarter-finals, semi-finals, final. Third-place match remains out of MVP scope unless explicitly added.
+- Out of scope: Group-stage management, qualification calculations, league standings, and scraping as a primary production data source.
+- Architecture decision: Use the hybrid model from [ARCH-003 ADR](./decisions/arch-003-knockout-data-source-and-result-contract.md): official/manual bracket seed, one approved provider adapter for operational updates, and admin fallback with auditable overrides. The preferred initial free candidate is `rezarahiminia/worldcup2026`, consumed through import/self-hosting or a controlled adapter rather than as a sole third-party uptime dependency.
+- Canonical result semantics: completed knockout matches are scored from end-of-play goals, while `winner_team_id` represents the advancing team; penalty shoot-out goals do not count toward exact-score or team-goal bonuses.
+- Next executable sequence: `BE-005` backend import/sync and result normalization, `DEVOPS-002` sync scheduling/ops, `UX-002` admin correction flow, `FE-006` admin UI, then `REV-003`.
+- Acceptance criteria: The app can initialize knockout fixtures, sync teams/times/results from an approved source, audit changes, handle provider failure through admin fallback, and recalculate scoring idempotently after finished matches.
+- Risk: High
 
 ## BLOCKED
 

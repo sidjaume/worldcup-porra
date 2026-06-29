@@ -51,6 +51,8 @@ export type CreatePoolResponse = {
   name: string;
   tournament_id: ID;
   role: "owner" | "participant";
+  participant_count: number;
+  created_at: string;
   invite_code: string;
 };
 

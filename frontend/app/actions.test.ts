@@ -6,11 +6,22 @@ const createPoolActionSource = source.slice(
   source.indexOf("export async function createPoolAction"),
   source.indexOf("export async function joinPoolAction"),
 );
+const updatePoolActionSource = source.slice(
+  source.indexOf("export async function updatePoolAction"),
+  source.indexOf("function toActionError"),
+);
 
 describe("createPoolAction", () => {
   it("returns the initial invite code from the create pool response", () => {
     expect(createPoolActionSource).toContain("inviteCode: pool.invite_code");
     expect(createPoolActionSource).toContain("poolId: pool.id");
     expect(createPoolActionSource).not.toContain("redirect(");
+  });
+});
+
+describe("updatePoolAction", () => {
+  it("does not deactivate pools from the settings form", () => {
+    expect(updatePoolActionSource).toContain("updatePool(accessToken, poolId, { name })");
+    expect(updatePoolActionSource).not.toContain("formData.get(\"is_active\")");
   });
 });
