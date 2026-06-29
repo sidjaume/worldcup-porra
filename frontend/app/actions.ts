@@ -15,6 +15,7 @@ type ActionState = {
   error?: string;
   inviteCode?: string;
   ok?: boolean;
+  poolId?: string;
 };
 
 export async function createPoolAction(
@@ -28,18 +29,16 @@ export async function createPoolAction(
     return { error: "Pool name and tournament are required." };
   }
 
-  let poolId: string;
   try {
     const pool = await withAuthenticatedSession((accessToken) =>
       createPool(accessToken, name, tournamentId),
     );
-    poolId = pool.id;
     revalidatePath("/");
     revalidatePath("/pools");
+    return { inviteCode: pool.invite_code, ok: true, poolId: pool.id };
   } catch (error) {
     return toActionError(error);
   }
-  redirect(`/pools/${poolId}`);
 }
 
 export async function joinPoolAction(

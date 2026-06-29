@@ -29,6 +29,7 @@ export default async function PoolDetailPage({
     .filter((match) => match.status === "scheduled")
     .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at))
     .slice(0, 4);
+  const isOwner = pool.owner_user_id === session.user.id;
 
   return (
     <AppShell user={session.user}>
@@ -42,7 +43,9 @@ export default async function PoolDetailPage({
         </header>
         <PoolSubnav poolId={poolId} poolName={pool.name} />
 
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
+        <div
+          className={`grid gap-4 ${isOwner ? "lg:grid-cols-[1.4fr_0.8fr]" : ""}`}
+        >
           <Card>
             <h2 className="mb-4 text-lg font-semibold">Next matches</h2>
             <div className="grid gap-3">
@@ -68,21 +71,25 @@ export default async function PoolDetailPage({
               )}
             </div>
           </Card>
-          <Card>
-            <h2 className="mb-4 text-lg font-semibold">Invite code</h2>
-            <InviteCodeForm poolId={poolId} />
-          </Card>
+          {isOwner ? (
+            <Card>
+              <h2 className="mb-4 text-lg font-semibold">Invite code</h2>
+              <InviteCodeForm poolId={poolId} />
+            </Card>
+          ) : null}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={`grid gap-4 ${isOwner ? "lg:grid-cols-2" : ""}`}>
           <Card>
             <h2 className="mb-4 text-lg font-semibold">Participants</h2>
             <ParticipantList participants={participants} />
           </Card>
-          <Card>
-            <h2 className="mb-4 text-lg font-semibold">Pool settings</h2>
-            <PoolSettingsForm pool={pool} />
-          </Card>
+          {isOwner ? (
+            <Card>
+              <h2 className="mb-4 text-lg font-semibold">Pool settings</h2>
+              <PoolSettingsForm pool={pool} />
+            </Card>
+          ) : null}
         </div>
 
         <Card>

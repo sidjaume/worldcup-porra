@@ -43,7 +43,7 @@ export type PoolDetail = {
   owner_user_id: ID;
   participant_count: number;
   created_at: string;
-  is_active?: boolean;
+  is_active: boolean;
 };
 
 export type CreatePoolResponse = {

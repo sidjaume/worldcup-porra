@@ -49,12 +49,27 @@ class PoolService:
         participant = self.pools.get_participant(pool_id=pool_id, user_id=user_id)
         if participant is None or participant.status != ParticipantStatus.ACTIVE:
             raise ForbiddenError("You are not a participant in this pool.")
+        if not pool.is_active:
+            raise ForbiddenError("This pool is inactive.")
         return pool, participant
 
-    def require_owner(self, *, pool_id: UUID, user_id: UUID):
-        pool, participant = self.get_member_pool(pool_id=pool_id, user_id=user_id)
+    def require_owner(
+        self,
+        *,
+        pool_id: UUID,
+        user_id: UUID,
+        allow_inactive_pool: bool = False,
+    ):
+        pool = self.pools.get(pool_id)
+        if pool is None:
+            raise NotFoundError("Pool not found.")
+        participant = self.pools.get_participant(pool_id=pool_id, user_id=user_id)
+        if participant is None or participant.status != ParticipantStatus.ACTIVE:
+            raise ForbiddenError("You are not a participant in this pool.")
         if participant.role != PoolRole.OWNER:
             raise ForbiddenError("Only the pool owner can perform this action.")
+        if not allow_inactive_pool and not pool.is_active:
+            raise ForbiddenError("This pool is inactive.")
         return pool
 
     def update_pool(
@@ -65,7 +80,11 @@ class PoolService:
         name: str | None,
         is_active: bool | None,
     ):
-        pool = self.require_owner(pool_id=pool_id, user_id=user_id)
+        pool = self.require_owner(
+            pool_id=pool_id,
+            user_id=user_id,
+            allow_inactive_pool=True,
+        )
         if name is not None:
             pool.name = name
         if is_active is not None:

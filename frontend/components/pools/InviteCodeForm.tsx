@@ -1,29 +1,71 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { rotateInviteCodeAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
 
-export function InviteCodeForm({ poolId }: { poolId: string }) {
-  const [state, action, pending] = useActionState(rotateInviteCodeAction, {});
-  const [confirmed, setConfirmed] = useState(false);
+export function InviteCodeCopyPanel({
+  code,
+  title = "Invite code",
+}: {
+  code: string;
+  title?: string;
+}) {
   const [copyStatus, setCopyStatus] = useState<string>();
-  const feedbackId = useId();
   const copyStatusId = useId();
 
+  useEffect(() => {
+    setCopyStatus(undefined);
+  }, [code]);
+
   async function copyInviteCode() {
-    if (!state.inviteCode) {
-      return;
-    }
     try {
-      await navigator.clipboard.writeText(state.inviteCode);
+      await navigator.clipboard.writeText(code);
       setCopyStatus("Invite code copied.");
     } catch {
       setCopyStatus("Copy failed. Select the code and copy it manually.");
     }
   }
+
+  return (
+    <div
+      className="grid gap-3 rounded-md bg-mint px-3 py-3 text-sm text-grass"
+      role="status"
+    >
+      <p className="font-semibold">{title}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="rounded-md bg-white px-2 py-1 font-mono text-sm text-ink">
+          {code}
+        </code>
+        <Button
+          aria-describedby={copyStatus ? copyStatusId : undefined}
+          onClick={copyInviteCode}
+          type="button"
+          variant="ghost"
+        >
+          {copyStatus === "Invite code copied." ? (
+            <Check aria-hidden="true" size={16} />
+          ) : (
+            <Copy aria-hidden="true" size={16} />
+          )}
+          Copy
+        </Button>
+      </div>
+      {copyStatus ? (
+        <p className="text-sm font-medium text-grass" id={copyStatusId} role="status">
+          {copyStatus}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function InviteCodeForm({ poolId }: { poolId: string }) {
+  const [state, action, pending] = useActionState(rotateInviteCodeAction, {});
+  const [confirmed, setConfirmed] = useState(false);
+  const feedbackId = useId();
 
   return (
     <form
@@ -58,37 +100,9 @@ export function InviteCodeForm({ poolId }: { poolId: string }) {
         {pending ? "Rotating" : "Rotate invite code"}
       </Button>
       {state.inviteCode ? (
-        <div
-          className="grid gap-3 rounded-md bg-mint px-3 py-3 text-sm text-grass"
-          role="status"
-        >
-          <p className="font-semibold">New invite code</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded-md bg-white px-2 py-1 font-mono text-sm text-ink">
-              {state.inviteCode}
-            </code>
-            <Button
-              aria-describedby={copyStatus ? copyStatusId : undefined}
-              onClick={copyInviteCode}
-              type="button"
-              variant="ghost"
-            >
-              {copyStatus === "Invite code copied." ? (
-                <Check aria-hidden="true" size={16} />
-              ) : (
-                <Copy aria-hidden="true" size={16} />
-              )}
-              Copy
-            </Button>
-          </div>
-        </div>
+        <InviteCodeCopyPanel code={state.inviteCode} title="New invite code" />
       ) : null}
       <FormMessage id={feedbackId} message={state.error} />
-      {copyStatus ? (
-        <p className="text-sm font-medium text-grass" id={copyStatusId} role="status">
-          {copyStatus}
-        </p>
-      ) : null}
     </form>
   );
 }

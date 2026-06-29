@@ -86,6 +86,7 @@ def get_pool(
         name=pool.name,
         tournament_id=pool.tournament_id,
         owner_user_id=pool.owner_user_id,
+        is_active=pool.is_active,
         participant_count=service.pools.participant_count(pool.id),
         created_at=pool.created_at,
     )

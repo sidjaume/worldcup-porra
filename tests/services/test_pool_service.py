@@ -87,10 +87,85 @@ def test_update_pool_mutates_pool_and_refreshes_in_service() -> None:
     assert db.refreshed is pool
 
 
+def test_get_member_pool_rejects_inactive_pool() -> None:
+    owner_user_id = uuid4()
+    pool = SimpleNamespace(
+        id=uuid4(),
+        owner_user_id=owner_user_id,
+        name="Office Pool",
+        is_active=False,
+    )
+    service = service_with_repo(
+        FakePoolsRepository(
+            pool=pool,
+            owner_participant=owner_participant(owner_user_id),
+        )
+    )
+
+    with pytest.raises(ForbiddenError):
+        service.get_member_pool(pool_id=pool.id, user_id=owner_user_id)
+
+
+def test_update_pool_allows_owner_to_reactivate_inactive_pool() -> None:
+    owner_user_id = uuid4()
+    pool = SimpleNamespace(
+        id=uuid4(),
+        owner_user_id=owner_user_id,
+        name="Office Pool",
+        is_active=False,
+    )
+    db = FakeDb()
+    service = service_with_repo(
+        FakePoolsRepository(
+            pool=pool,
+            owner_participant=owner_participant(owner_user_id),
+        ),
+        db,
+    )
+
+    updated = service.update_pool(
+        pool_id=pool.id,
+        user_id=owner_user_id,
+        name=None,
+        is_active=True,
+    )
+
+    assert updated is pool
+    assert pool.is_active is True
+    assert db.committed is True
+    assert db.refreshed is pool
+
+
+def test_owner_actions_other_than_update_reject_inactive_pool() -> None:
+    owner_user_id = uuid4()
+    participant_user_id = uuid4()
+    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id, is_active=False)
+    participant = SimpleNamespace(
+        user_id=participant_user_id,
+        role=PoolRole.PARTICIPANT,
+        status=ParticipantStatus.ACTIVE,
+        removed_at=None,
+    )
+    service = service_with_repo(
+        FakePoolsRepository(
+            pool=pool,
+            owner_participant=owner_participant(owner_user_id),
+            participant=participant,
+        )
+    )
+
+    with pytest.raises(ForbiddenError):
+        service.remove_participant(
+            pool_id=pool.id,
+            owner_user_id=owner_user_id,
+            participant_user_id=participant_user_id,
+        )
+
+
 def test_remove_participant_marks_active_participant_removed() -> None:
     owner_user_id = uuid4()
     participant_user_id = uuid4()
-    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id)
+    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id, is_active=True)
     participant = SimpleNamespace(
         user_id=participant_user_id,
         role=PoolRole.PARTICIPANT,
@@ -121,7 +196,7 @@ def test_remove_participant_marks_active_participant_removed() -> None:
 
 def test_remove_participant_rejects_owner_self_removal() -> None:
     owner_user_id = uuid4()
-    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id)
+    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id, is_active=True)
     service = service_with_repo(
         FakePoolsRepository(
             pool=pool,
@@ -139,7 +214,7 @@ def test_remove_participant_rejects_owner_self_removal() -> None:
 
 def test_remove_participant_rejects_missing_participant() -> None:
     owner_user_id = uuid4()
-    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id)
+    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id, is_active=True)
     service = service_with_repo(
         FakePoolsRepository(
             pool=pool,
@@ -158,7 +233,7 @@ def test_remove_participant_rejects_missing_participant() -> None:
 def test_remove_participant_rejects_inactive_participant() -> None:
     owner_user_id = uuid4()
     participant_user_id = uuid4()
-    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id)
+    pool = SimpleNamespace(id=uuid4(), owner_user_id=owner_user_id, is_active=True)
     participant = SimpleNamespace(
         user_id=participant_user_id,
         role=PoolRole.PARTICIPANT,

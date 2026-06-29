@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: MVP implementation slices exist and are pending review and production configuration.
+Status: MVP implementation slices exist; REV-002 completed with changes requested; production configuration remains blocked on external accounts and secrets.
 Last reconciled: 2026-06-29.
 
 Implementation has already begun. This roadmap now describes the intended
@@ -43,10 +43,11 @@ Each phase should finish with:
 
 Current gate status:
 
-- Architecture/API/database/roadmap reconciliation: pending review under ORCH-001.
-- Independent production-readiness review: pending under REV-001.
+- Architecture/API/database/roadmap reconciliation: pending final approval under ORCH-001.
+- Focused production-readiness review: REV-002 completed with changes requested.
+- Required follow-up: DEVOPS-003 in `docs/backlog.md`; BE-006 and FE-007 are implemented and pending validation.
 - Production deployment: blocked until Render, Neon, Google OAuth, and secrets are configured outside the repository.
-- OAuth/environment alignment: pending DevOps/Backend follow-up.
+- OAuth/environment alignment: completed under DEVOPS-001.
 
 ## Phase 0: Project Foundation
 
@@ -122,7 +123,7 @@ tracked as `BE-001` in `docs/backlog.md`.
 
 ## Phase 3: Authentication
 
-Status: Implemented initial slice, pending OAuth configuration audit and Reviewer validation.
+Status: Implemented initial slice; OAuth configuration audit completed; pending REV-002 follow-up and re-review.
 
 Deliverables:
 
@@ -145,8 +146,8 @@ Acceptance criteria:
 - The frontend can authenticate through backend-owned OAuth.
 - Google secrets exist only in backend configuration.
 
-Known follow-up: `.env.example`, Docker Compose, Render variables, and docs must
-agree on backend-owned OAuth callback URLs before production deployment.
+Known follow-up: real OAuth credentials and deployed callback/origin values must
+be configured outside the repository before production deployment.
 
 ## Phase 4: Pool Management
 
@@ -267,12 +268,17 @@ external accounts, OAuth client configuration, and production secrets exist.
 
 ## Phase 9: Hardening and Polish
 
-Status: Planned/deferred.
+Status: Planned/deferred. World Cup knockout data operations are now tracked as
+`DATA-EPIC-001` in `docs/backlog.md` and should begin with the `ARCH-003`
+provider/contract decision.
 
 Deliverables:
 
 - Rate limits for auth and invite-code endpoints.
 - Admin tooling for bracket corrections.
+- Approved knockout data provider or manual/official import strategy.
+- Scheduled synchronization for kickoff times, teams, match status, and results.
+- Manual fallback workflow for correcting match data and triggering rescoring.
 - Better audit trail for match result changes.
 - More complete observability.
 - Backup/restore runbook.
@@ -282,6 +288,7 @@ Acceptance criteria:
 
 - Common abuse cases are handled.
 - Operational recovery steps are documented.
+- Tournament data sync is idempotent, observable, and recoverable during match days.
 
 ## Suggested MVP Milestones
 
@@ -351,7 +358,7 @@ Status: Planned/deferred.
 - Email notifications or reminders before match locks.
 - Pool-specific scoring configurations.
 - Public share links for standings.
-- Admin import from external fixture/result providers.
+- Additional provider integrations beyond the approved MVP tournament data source.
 - Materialized ranking cache for larger usage.
 - Multi-language frontend.
 - Audit log screen for pool owners.

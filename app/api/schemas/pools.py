@@ -36,6 +36,7 @@ class PoolDetail(BaseModel):
     name: str
     tournament_id: UUID
     owner_user_id: UUID
+    is_active: bool
     participant_count: int
     created_at: datetime
 

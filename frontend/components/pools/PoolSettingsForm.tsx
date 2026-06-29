@@ -25,7 +25,7 @@ export function PoolSettingsForm({ pool }: { pool: PoolDetail }) {
         />
       </Field>
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input defaultChecked={pool.is_active ?? true} name="is_active" type="checkbox" />
+        <input defaultChecked={pool.is_active} name="is_active" type="checkbox" />
         Active
       </label>
       <FormMessage id={state.error ? feedbackId : undefined} message={state.error} />

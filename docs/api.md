@@ -309,7 +309,7 @@ The invite code is returned only on creation or rotation.
 
 ### GET `/api/v1/pools/{pool_id}`
 
-Returns pool details for members.
+Returns pool details for active member pools. Inactive pools are rejected for normal member access.
 
 Response:
 
@@ -319,6 +319,7 @@ Response:
   "name": "Office Pool",
   "tournament_id": "uuid",
   "owner_user_id": "uuid",
+  "is_active": true,
   "participant_count": 12,
   "created_at": "2026-06-28T17:00:00Z"
 }
@@ -326,7 +327,7 @@ Response:
 
 ### PATCH `/api/v1/pools/{pool_id}`
 
-Owner-only pool update.
+Owner-only pool update. Owners can update inactive pools through this endpoint, including reactivating them by setting `is_active` to `true`.
 
 Request:
 
@@ -386,7 +387,7 @@ Response:
 
 ### GET `/api/v1/pools/{pool_id}/participants`
 
-Lists active participants. Members can view.
+Lists active participants for active member pools. Inactive pools are rejected for normal member access.
 
 Response:
 
