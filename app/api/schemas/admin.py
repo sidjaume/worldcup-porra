@@ -1,5 +1,5 @@
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -25,3 +25,25 @@ class CompleteMatchRequest(BaseModel):
 
 class CompleteMatchResponse(MatchRead):
     pass
+
+
+class UpdateKickoffRequest(BaseModel):
+    """Request body for updating a match kickoff time."""
+
+    scheduled_at: datetime
+
+
+class SyncTournamentRequest(BaseModel):
+    """Request body for running a provider sync."""
+
+    year: int = Field(default=2026, ge=2026)
+
+
+class SyncResult(BaseModel):
+    """Response body for a manual provider sync operation."""
+
+    teams_created: int = 0
+    teams_updated: int = 0
+    matches_created: int = 0
+    matches_updated: int = 0
+    errors: list[str] = Field(default_factory=list)

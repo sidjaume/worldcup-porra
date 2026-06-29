@@ -6,7 +6,7 @@ Last updated: 2026-06-29
 
 Milestone 4: Deployed MVP is in progress.
 
-The repository now contains a working FastAPI backend, Next.js frontend, PostgreSQL schema/migration, Docker Compose local deployment, Render blueprint, and CI workflow. The canonical architecture/API/database/roadmap docs have been reconciled with that implementation state. REV-002's split follow-up tasks were implemented, reviewed, and recorded in the backlog as historical follow-up work.
+The repository now contains a working FastAPI backend, Next.js frontend, PostgreSQL schema/migration, Docker Compose local deployment, Render blueprint, and CI workflow. The canonical architecture/API/database/roadmap docs have been reconciled with that implementation state. REV-002's split follow-up tasks were implemented, reviewed, and recorded in the backlog as historical follow-up work. DATA-EPIC-001 has backend and sync-operations slices implemented and approved by the independent Reviewer gate.
 
 ## Completed
 
@@ -31,6 +31,8 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - DEVOPS-003 CI coverage for DB and repository integration tests approved by Reviewer.
 - ARCH-003 accepted for knockout data source and result semantics.
 - ARCH-003 selects `rezarahiminia/worldcup2026` as the preferred initial free data-source candidate for DATA-EPIC-001, with import/self-hosting preferred over blind public-host dependency.
+- BE-005 fixture import/provider sync backend implemented and approved by independent Reviewer gate.
+- DEVOPS-002 tournament data sync operations implemented and approved by independent Reviewer gate.
 
 ## Verification Evidence
 
@@ -67,6 +69,14 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - BE-006 focused Reviewer decision: `APPROVED`.
 - Local deployment: `docker compose ps` shows `db`, `backend`, and `frontend` running; backend `/health` returned `{"status":"ok","database":"ok"}`; frontend `/health` returned `{"status":"ok"}`.
 - Frontend UX/accessibility follow-up: `npm test` passed, 12 tests; `npm run lint` passed; `npm run typecheck` passed.
+- BE-005 backend lint: `.\.venv\Scripts\python.exe -m ruff check app tests scripts` passed.
+- BE-005 focused regression matrix: `.\.venv\Scripts\python.exe -m pytest tests/providers/test_worldcup2026_adapter.py tests/services/test_fixture_sync_service.py tests/services/test_admin_service.py tests/scripts/test_sync_knockout_fixtures.py` passed, 12 tests.
+- BE-005 backend/script matrix: `.\.venv\Scripts\python.exe -m pytest tests/api tests/config tests/domain tests/services tests/providers tests/db tests/repositories tests/scripts` passed, 53 tests.
+- BE-005/DEVOPS-002 independent Reviewer gate: no blocking issues found; residual runtime validation gaps are the first live provider response shape and actual Render cron execution.
+- DEVOPS-002 YAML parse: `render.yaml` and `docker-compose.yml` parsed successfully with `yaml.safe_load`.
+- DEVOPS-002 Compose validation: `docker compose --env-file .env.example --profile tools config` rendered successfully.
+- DEVOPS-002 config tests: `.\.venv\Scripts\python.exe -m pytest tests\config` passed, 4 tests.
+- DEVOPS-002 whitespace check: `git diff --check` passed with only Windows LF/CRLF warnings.
 
 ## In Progress
 
@@ -78,7 +88,7 @@ None.
 
 ## Planned
 
-- Planned execution order for DATA-EPIC-001: BE-005 fixture import/provider sync backend; DEVOPS-002 sync operations; UX-002 admin correction flow; FE-006 admin match data UI; REV-003 full review.
+- Planned execution order for DATA-EPIC-001 after pending reviews: UX-002 admin correction flow; FE-006 admin match data UI; REV-003 full review.
 
 ## Blocked
 
@@ -107,6 +117,8 @@ Not deployed to production. Local Docker deployment is healthy.
 
 ## Next Recommended Task
 
-Start BE-005 against the `worldcup2026` import/adapter path.
+Start UX-002: Admin Data Correction and Sync Visibility Flow.
 
-Rationale: ARCH-003 is accepted and gives DATA-EPIC-001 a stable architecture, execution order, and realistic free candidate source. BE-005 can now align backend result semantics and build the import/sync adapter.
+Rationale: BE-005 and DEVOPS-002 are now implemented, fixed after review
+findings, and approved by the independent Reviewer gate. The next dependency
+for FE-006 is the admin correction and sync visibility flow specification.

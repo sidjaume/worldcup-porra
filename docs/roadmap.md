@@ -45,7 +45,7 @@ Current gate status:
 
 - Architecture/API/database/roadmap reconciliation: approved with comments under ORCH-001.
 - Focused production-readiness review: REV-002 completed with changes requested; split follow-ups are approved and archived.
-- Historical follow-up: FE-007 is approved with comments, ORCH-001 is approved with comments, BE-006/DEVOPS-003 are approved, and ARCH-003 is accepted. DATA-EPIC-001 is ready for implementation sequencing starting with BE-005.
+- Historical follow-up: FE-007 is approved with comments, ORCH-001 is approved with comments, BE-006/DEVOPS-003 are approved, and ARCH-003 is accepted. DATA-EPIC-001 has approved backend and sync-operations slices; the next planned slice is UX-002.
 - Production deployment: blocked until Render, Neon, Google OAuth, and secrets are configured outside the repository.
 - OAuth/environment alignment: completed under DEVOPS-001.
 
@@ -270,21 +270,29 @@ external accounts, OAuth client configuration, and production secrets exist.
 
 ## Phase 9: Hardening and Polish
 
-Status: Planned/deferred. World Cup knockout data operations are tracked as
-`DATA-EPIC-001` in `docs/backlog.md`; `ARCH-003` now defines the target
-contract and implementation order.
+Status: Partially implemented. World Cup knockout data operations are tracked
+as `DATA-EPIC-001` in `docs/backlog.md`; `ARCH-003` defines the target
+contract and implementation order. The BE-005 backend slice now includes
+provider normalization, idempotent import/sync services, provider mapping
+fields, admin kickoff correction, admin-triggered sync, and tied-score result
+semantics.
 
 Deliverables:
 
 - Rate limits for auth and invite-code endpoints.
 - Admin tooling for bracket corrections.
 - Official/manual bracket seed plus one approved provider adapter for
-  operational updates.
+  operational updates. Backend provider adapter/import/sync service and DevOps
+  scheduling/runbook are implemented and approved by the independent Reviewer
+  gate.
 - Preferred initial free candidate: `rezarahiminia/worldcup2026`, consumed
   through project-controlled import or self-hosted adapter flow.
 - Scheduled synchronization for kickoff times, teams, match status, and results.
-- Manual fallback workflow for correcting match data and triggering rescoring.
-- Better audit trail for match result changes.
+- Manual fallback workflow for correcting kickoff times, entering results, and
+  triggering rescoring. Full admin correction UI remains planned.
+- Match-level audit metadata for provider/admin source, provider sync time, and
+  manual override protection. A fuller correction-event history can be added if
+  operational review requires it.
 - More complete observability.
 - Backup/restore runbook.
 - Accessibility and mobile checks for frontend screens.

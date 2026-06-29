@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import db_dependency, get_current_user, settings_dependency
 from app.api.routers.tournaments import serialize_match
-from app.api.schemas.admin import CompleteMatchRequest, CreateMatchRequest
+from app.api.schemas.admin import (
+    CompleteMatchRequest,
+    CreateMatchRequest,
+    SyncResult,
+    SyncTournamentRequest,
+    UpdateKickoffRequest,
+)
 from app.api.schemas.tournaments import MatchRead
 from app.config.settings import Settings
 from app.models.user import User
+from app.providers.worldcup2026 import WorldCup2026Adapter
 from app.services.admin_service import AdminService
 
 
@@ -55,6 +62,22 @@ def complete_match(
     return serialize_match(match)
 
 
+@router.patch("/matches/{match_id}/kickoff", response_model=MatchRead)
+def update_match_kickoff(
+    match_id: UUID,
+    request: UpdateKickoffRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(db_dependency),
+    settings: Settings = Depends(settings_dependency),
+) -> MatchRead:
+    match = AdminService(db, settings).update_match_kickoff(
+        admin_email=current_user.email,
+        match_id=match_id,
+        scheduled_at=request.scheduled_at,
+    )
+    return serialize_match(match)
+
+
 @router.post("/matches/{match_id}/rescore", response_model=MatchRead)
 def rescore_match(
     match_id: UUID,
@@ -67,3 +90,31 @@ def rescore_match(
         match_id=match_id,
     )
     return serialize_match(match)
+
+
+@router.post("/tournaments/{tournament_id}/sync", response_model=SyncResult)
+def sync_tournament(
+    tournament_id: UUID,
+    request: SyncTournamentRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(db_dependency),
+    settings: Settings = Depends(settings_dependency),
+) -> SyncResult:
+    adapter = WorldCup2026Adapter(
+        base_url=settings.tournament_provider_base_url,
+        timeout=settings.tournament_provider_timeout_seconds,
+        api_key=settings.tournament_provider_api_key or None,
+    )
+    result = AdminService(db, settings).sync_provider_data(
+        admin_email=current_user.email,
+        tournament_id=tournament_id,
+        adapter=adapter,
+        year=request.year,
+    )
+    return SyncResult(
+        teams_created=result.teams_created,
+        teams_updated=result.teams_updated,
+        matches_created=result.matches_created,
+        matches_updated=result.matches_updated,
+        errors=result.errors,
+    )

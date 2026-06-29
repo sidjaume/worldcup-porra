@@ -35,6 +35,9 @@ Required Render environment variables:
 - `BACKEND_BASE_URL`
 - `ALLOWED_ORIGINS`
 - `ADMIN_EMAILS`
+- `TOURNAMENT_PROVIDER_BASE_URL`
+- `TOURNAMENT_PROVIDER_API_KEY` if the configured provider requires it
+- `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS`
 
 Use Render secret/synced environment values for every secret. Do not commit
 production values to the repository.
@@ -59,6 +62,32 @@ Required Render environment variables:
 
 The backend `FRONTEND_BASE_URL` and `ALLOWED_ORIGINS` values must match the
 frontend public URL.
+
+### Scheduled Fixture Sync
+
+`render.yaml` also defines `worldcup-pool-fixture-sync`, a Render cron job that
+uses the backend Docker image and runs:
+
+```sh
+python -m scripts.sync_knockout_fixtures "$TOURNAMENT_SYNC_TOURNAMENT_ID" --year "${TOURNAMENT_SYNC_YEAR:-2026}" --mode "${TOURNAMENT_SYNC_MODE:-all}"
+```
+
+The job is scheduled every 15 minutes. This is intentionally frequent enough
+for match-day kickoff/result updates while still being simple to reason about.
+Before enabling production sync, configure these Render variables on the cron
+job:
+
+- `DATABASE_URL`: same Neon database URL as the backend.
+- `TOURNAMENT_SYNC_TOURNAMENT_ID`: internal tournament UUID.
+- `TOURNAMENT_SYNC_YEAR`: normally `2026`.
+- `TOURNAMENT_SYNC_MODE`: normally `all`; use `results` for result-only retry.
+- `TOURNAMENT_PROVIDER_BASE_URL`: provider or self-hosted adapter base URL.
+- `TOURNAMENT_PROVIDER_API_KEY`: secret provider key when required.
+- `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS`: request timeout, default `10`.
+
+The cron job prints a one-line summary with created/updated counts and prints
+individual errors without provider payloads or secrets. Failed provider calls
+return non-zero from the script and do not corrupt existing data.
 
 ## Neon
 
@@ -110,6 +139,20 @@ Seed development data:
 docker compose exec backend python -m scripts.seed_dev_data
 ```
 
+Run a local fixture sync against the Docker database:
+
+```powershell
+$env:TOURNAMENT_SYNC_TOURNAMENT_ID = "<local-tournament-uuid>"
+docker compose --profile tools run --rm fixture-sync
+```
+
+For result-only retry:
+
+```powershell
+$env:TOURNAMENT_SYNC_MODE = "results"
+docker compose --profile tools run --rm fixture-sync
+```
+
 Open:
 
 - Frontend: `http://localhost:3000`
@@ -126,5 +169,39 @@ Open:
    HTTPS URLs.
 5. Google OAuth redirect URI matches the deployed backend callback.
 6. Render pre-deploy migration succeeds.
-7. Backend `/health` returns `{"status": "ok", "database": "ok"}`.
-8. Frontend `/health` returns a 2xx status.
+7. `worldcup-pool-fixture-sync` has `TOURNAMENT_SYNC_TOURNAMENT_ID` and provider
+   variables configured, or the cron job is intentionally paused until the
+   tournament record exists.
+8. Backend `/health` returns `{"status": "ok", "database": "ok"}`.
+9. Frontend `/health` returns a 2xx status.
+10. Manual fixture sync dry run succeeds before relying on the schedule.
+
+## Fixture Sync Runbook
+
+### Normal Operation
+
+1. Confirm BE-005 migrations have run.
+2. Set the provider and tournament sync environment variables in Render.
+3. Trigger a manual cron run in Render or run the command once from a shell.
+4. Confirm the summary shows expected created/updated counts.
+5. Check backend match responses for `provider_last_synced_at`, `sync_source`,
+   and `admin_override`.
+
+### Provider Failure
+
+1. Inspect the cron run logs for the printed error summary.
+2. Confirm no secrets or raw provider credentials are present in logs.
+3. Retry with `TOURNAMENT_SYNC_MODE=results` if fixture/team import is already
+   healthy and only result sync failed.
+4. Use admin match completion or kickoff correction as fallback when provider
+   data is unavailable or wrong.
+
+### Rollback and Recovery
+
+1. Pause the Render cron job if repeated provider failures or bad data appear.
+2. Correct affected matches through admin endpoints. Manual corrections set
+   `admin_override=true`, so later provider runs do not silently overwrite them.
+3. Re-run `POST /api/v1/admin/matches/{match_id}/rescore` for completed matches
+   after a correction when needed.
+4. Resume the cron job only after provider data and environment variables are
+   verified.

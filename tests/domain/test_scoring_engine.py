@@ -54,3 +54,24 @@ def test_scoring_is_configurable() -> None:
     assert result.points == 5
     assert result.scoring_version == "custom"
 
+
+def test_correct_winner_can_use_declared_advancing_side_for_tied_actual() -> None:
+    result = ScoringEngine().calculate(
+        prediction=ScoreLine(2, 1),
+        actual=ScoreLine(1, 1, declared_winner_side="home"),
+    )
+
+    assert result.points == 3
+    assert result.correct_winner is True
+    assert result.partial_away_goals is True
+
+
+def test_tied_prediction_does_not_infer_advancing_side() -> None:
+    result = ScoringEngine().calculate(
+        prediction=ScoreLine(1, 1),
+        actual=ScoreLine(1, 1, declared_winner_side="away"),
+    )
+
+    assert result.points == 2
+    assert result.correct_winner is False
+    assert result.exact_score is True

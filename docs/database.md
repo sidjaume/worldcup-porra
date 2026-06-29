@@ -186,6 +186,7 @@ Stores teams participating in the knockout bracket.
 | short_name | text nullable | Display abbreviation |
 | fifa_code | text nullable | Optional three-letter code |
 | flag_url | text nullable | Optional display asset |
+| provider_ref | text nullable | External provider team ID for sync mapping |
 | created_at | timestamptz not null |  |
 | updated_at | timestamptz not null |  |
 
@@ -193,6 +194,7 @@ Constraints:
 
 - Unique `(tournament_id, name)`.
 - Unique `(tournament_id, fifa_code)` where `fifa_code is not null`.
+- Unique `(tournament_id, provider_ref)` where `provider_ref is not null`.
 
 ### matches
 
@@ -213,12 +215,17 @@ Stores knockout matches and bracket progression links.
 | winner_team_id | uuid fk teams(id) nullable | Winner after completion |
 | next_match_id | uuid fk matches(id) nullable | Where winner advances |
 | next_match_slot | next_slot nullable | `home` or `away` |
+| provider_ref | text nullable | External provider match ID for sync mapping |
+| provider_last_synced_at | timestamptz nullable | Last successful provider row sync |
+| sync_source | text nullable | Last writer: `seed`, `provider`, or `admin` |
+| admin_override | boolean not null default false | Provider sync must not overwrite manual correction |
 | created_at | timestamptz not null |  |
 | updated_at | timestamptz not null |  |
 
 Constraints:
 
 - Unique `(tournament_id, stage, bracket_position)`.
+- Unique `(tournament_id, provider_ref)` where `provider_ref is not null`.
 - Check scores are null or non-negative.
 - Check `home_team_id <> away_team_id` when both are present.
 - Check completed matches have scores and a winner.
@@ -229,6 +236,7 @@ Constraints:
 Indexes:
 
 - `(tournament_id, stage, bracket_position)`.
+- `(tournament_id, provider_ref)`.
 - `(scheduled_at)`.
 - `(status)`.
 
@@ -397,9 +405,12 @@ If performance becomes an issue, add a materialized view or cached `pool_ranking
 
 The scoring engine remains pure domain code. Persistence flow:
 
-1. Admin completes a match by setting actual scores and winner.
+1. Admin or provider sync completes a match by setting end-of-play scores and
+   `winner_team_id`.
 2. Prediction service fetches predictions for the match.
-3. Domain scoring engine calculates results.
+3. Domain scoring engine calculates results. Correct-winner points use the
+   advancing side from `winner_team_id`; exact-score and single-team-goal
+   bonuses use `home_score` and `away_score`.
 4. Repository upserts `prediction_scores`.
 5. Ranking endpoint reads aggregate results.
 

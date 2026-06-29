@@ -38,7 +38,8 @@ The repository currently implements these route groups under `/api/v1`:
 - `/tournaments`: tournament list, team list, match list.
 - `/pools/{pool_id}/predictions`: current user's predictions and match prediction visibility.
 - `/pools/{pool_id}/rankings`: aggregate rankings.
-- `/admin`: match creation, match completion, and rescoring.
+- `/admin`: match creation, match completion, kickoff correction, provider sync,
+  and rescoring.
 - `/health`: unauthenticated process/database health endpoint outside `/api/v1`.
 
 The Next.js frontend API client currently calls the documented `/api/v1`
@@ -477,7 +478,10 @@ Response:
     "status": "scheduled",
     "home_score": null,
     "away_score": null,
-    "winner_team_id": null
+    "winner_team_id": null,
+    "sync_source": null,
+    "admin_override": false,
+    "provider_last_synced_at": null
   }
 ]
 ```
@@ -610,8 +614,7 @@ Creates a match. Admin-only.
 ### PATCH `/api/v1/admin/matches/{match_id}`
 
 Completes a match. Admin-only. This endpoint intentionally accepts only match
-completion fields; broader schedule, team, or status updates are outside the
-MVP admin contract.
+completion fields.
 
 Request:
 
@@ -626,7 +629,9 @@ Request:
 Response: `MatchRead`.
 
 Completing a match advances the winner when configured and scores predictions
-for that match.
+for that match. Penalty-decided matches must store the tied end-of-play score
+and the advancing team as `winner_team_id`; penalty shoot-out goals are not
+included in `home_score` or `away_score`.
 
 When a match is marked completed, the backend should:
 
@@ -634,11 +639,54 @@ When a match is marked completed, the backend should:
 2. Advance the winner to the next match slot if configured.
 3. Score predictions for that match.
 
+### PATCH `/api/v1/admin/matches/{match_id}/kickoff`
+
+Updates a non-completed match kickoff/lock time. Admin-only. This sets
+`admin_override=true` so later provider sync runs do not silently undo the
+manual correction.
+
+Request:
+
+```json
+{
+  "scheduled_at": "2026-06-28T19:00:00Z"
+}
+```
+
+Response: `MatchRead`.
+
 ### POST `/api/v1/admin/matches/{match_id}/rescore`
 
 Recalculates scores for a completed match. Admin-only.
 
 Response: `MatchRead`.
+
+### POST `/api/v1/admin/tournaments/{tournament_id}/sync`
+
+Runs the configured provider adapter for an admin-triggered sync. Admin-only.
+The backend imports provider teams, imports or updates knockout fixtures, then
+syncs in-progress/completed results. Sync is idempotent: rerunning it must not
+duplicate teams, matches, prediction scores, or bracket progression.
+
+Request:
+
+```json
+{
+  "year": 2026
+}
+```
+
+Response:
+
+```json
+{
+  "teams_created": 0,
+  "teams_updated": 0,
+  "matches_created": 0,
+  "matches_updated": 0,
+  "errors": []
+}
+```
 
 ## Authentication Flow
 

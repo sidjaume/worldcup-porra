@@ -84,7 +84,11 @@ class PredictionService:
             return
         if match.home_score is None or match.away_score is None:
             raise ValidationError("Completed match must have scores.")
-        actual = ScoreLine(home_goals=match.home_score, away_goals=match.away_score)
+        actual = ScoreLine(
+            home_goals=match.home_score,
+            away_goals=match.away_score,
+            declared_winner_side=self._winner_side_for_match(match),
+        )
         for prediction in self.predictions.list_all_for_match(match.id):
             predicted = ScoreLine(
                 home_goals=prediction.predicted_home_goals,
@@ -100,6 +104,16 @@ class PredictionService:
                 partial_away_goals=result.partial_away_goals,
                 scoring_version=result.scoring_version,
             )
+
+    @staticmethod
+    def _winner_side_for_match(match: Match) -> str | None:
+        if match.winner_team_id is None:
+            return None
+        if match.winner_team_id == match.home_team_id:
+            return "home"
+        if match.winner_team_id == match.away_team_id:
+            return "away"
+        raise ValidationError("Match winner must be one of the match teams.")
 
     def rankings(self, *, pool_id: UUID, user_id: UUID):
         self._require_active_participant(pool_id=pool_id, user_id=user_id)

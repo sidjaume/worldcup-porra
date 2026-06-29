@@ -20,6 +20,12 @@ local defaults. Never commit real secrets.
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | JWT access token lifetime. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | `30` | Refresh token lifetime. |
 | `SCORING_VERSION` | No | `mvp-2026-v1` | Version label for scoring rules. |
+| `TOURNAMENT_PROVIDER_BASE_URL` | No | `https://worldcup26.ir/get` | Base URL for the configured knockout data provider or self-hosted equivalent. |
+| `TOURNAMENT_PROVIDER_API_KEY` | No | `...` | Optional provider key; leave empty for sources that do not require a key. |
+| `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS` | No | `10` | HTTP timeout for provider sync calls. |
+| `TOURNAMENT_SYNC_TOURNAMENT_ID` | Required for scheduled sync | `00000000-0000-0000-0000-000000000000` | Internal tournament UUID passed to the sync job. |
+| `TOURNAMENT_SYNC_YEAR` | No | `2026` | Tournament year passed to the sync job. |
+| `TOURNAMENT_SYNC_MODE` | No | `all` | Sync job mode: `all`, `teams`, `matches`, or `results`. |
 | `LOG_LEVEL` | No | `INFO` | Logging verbosity. |
 
 ## Frontend Variables

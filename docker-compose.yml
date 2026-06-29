@@ -34,6 +34,9 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
       SCORING_VERSION: mvp-2026-v1
+      TOURNAMENT_PROVIDER_BASE_URL: ${TOURNAMENT_PROVIDER_BASE_URL:-https://worldcup26.ir/get}
+      TOURNAMENT_PROVIDER_API_KEY: ${TOURNAMENT_PROVIDER_API_KEY:-}
+      TOURNAMENT_PROVIDER_TIMEOUT_SECONDS: ${TOURNAMENT_PROVIDER_TIMEOUT_SECONDS:-10}
       LOG_LEVEL: INFO
     depends_on:
       db:
@@ -57,12 +60,49 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
       SCORING_VERSION: mvp-2026-v1
+      TOURNAMENT_PROVIDER_BASE_URL: ${TOURNAMENT_PROVIDER_BASE_URL:-https://worldcup26.ir/get}
+      TOURNAMENT_PROVIDER_API_KEY: ${TOURNAMENT_PROVIDER_API_KEY:-}
+      TOURNAMENT_PROVIDER_TIMEOUT_SECONDS: ${TOURNAMENT_PROVIDER_TIMEOUT_SECONDS:-10}
       LOG_LEVEL: INFO
     depends_on:
       migrate:
         condition: service_completed_successfully
     ports:
       - "8000:8000"
+
+  fixture-sync:
+    profiles:
+      - tools
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: >
+      sh -c 'python -m scripts.sync_knockout_fixtures
+      "${TOURNAMENT_SYNC_TOURNAMENT_ID:-}"
+      --year "${TOURNAMENT_SYNC_YEAR:-2026}"
+      --mode "${TOURNAMENT_SYNC_MODE:-all}"'
+    environment:
+      DATABASE_URL: postgresql+psycopg://worldcup:worldcup@db:5432/worldcup_pool
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-change-me
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: http://localhost:8000/api/v1/auth/google/callback
+      FRONTEND_BASE_URL: http://localhost:3000
+      BACKEND_BASE_URL: http://localhost:8000
+      ALLOWED_ORIGINS: http://localhost:3000
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      SCORING_VERSION: mvp-2026-v1
+      TOURNAMENT_PROVIDER_BASE_URL: ${TOURNAMENT_PROVIDER_BASE_URL:-https://worldcup26.ir/get}
+      TOURNAMENT_PROVIDER_API_KEY: ${TOURNAMENT_PROVIDER_API_KEY:-}
+      TOURNAMENT_PROVIDER_TIMEOUT_SECONDS: ${TOURNAMENT_PROVIDER_TIMEOUT_SECONDS:-10}
+      TOURNAMENT_SYNC_TOURNAMENT_ID: ${TOURNAMENT_SYNC_TOURNAMENT_ID:-}
+      TOURNAMENT_SYNC_YEAR: ${TOURNAMENT_SYNC_YEAR:-2026}
+      TOURNAMENT_SYNC_MODE: ${TOURNAMENT_SYNC_MODE:-all}
+      LOG_LEVEL: INFO
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   frontend:
     build:

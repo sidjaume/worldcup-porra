@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     )
     admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
     scoring_version: str = "mvp-2026-v1"
+    tournament_provider_base_url: str = "https://worldcup26.ir/get"
+    tournament_provider_api_key: str = ""
+    tournament_provider_timeout_seconds: int = 10
     log_level: str = "INFO"
 
     @field_validator("database_url")
@@ -44,7 +47,11 @@ class Settings(BaseSettings):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
-    @field_validator("frontend_base_url", "backend_base_url")
+    @field_validator(
+        "frontend_base_url",
+        "backend_base_url",
+        "tournament_provider_base_url",
+    )
     @classmethod
     def strip_trailing_slash(cls, value: str) -> str:
         return value.rstrip("/")

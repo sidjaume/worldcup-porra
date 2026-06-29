@@ -62,5 +62,7 @@ def serialize_match(match: Match) -> MatchRead:
         home_score=match.home_score,
         away_score=match.away_score,
         winner_team_id=match.winner_team_id,
+        sync_source=match.sync_source,
+        admin_override=match.admin_override,
+        provider_last_synced_at=match.provider_last_synced_at,
     )
-

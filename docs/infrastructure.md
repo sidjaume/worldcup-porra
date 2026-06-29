@@ -7,6 +7,7 @@ The infrastructure is intentionally simple for the MVP:
 - One FastAPI backend service.
 - One frontend service.
 - One managed PostgreSQL database.
+- One scheduled fixture sync cron job during tournament operations.
 - CI checks in GitHub Actions.
 - Docker images as the deployment unit.
 
@@ -39,6 +40,18 @@ unnecessary runtime components.
 - Schema changes: Alembic migrations only.
 - Local development: PostgreSQL service in `docker-compose.yml`.
 
+### Fixture Sync Cron
+
+- Platform: Render cron job.
+- Image: `Dockerfile.backend`.
+- Command: `python -m scripts.sync_knockout_fixtures`.
+- Schedule: every 15 minutes in production while tournament data operations are
+  active.
+- Configuration: provider base URL/key/timeout plus
+  `TOURNAMENT_SYNC_TOURNAMENT_ID`.
+- Safety: sync operations are idempotent and skip provider writes for matches
+  with `admin_override=true`.
+
 ## Docker
 
 `Dockerfile.backend` builds the production backend image. It installs the
@@ -53,10 +66,15 @@ standalone production server with Render's injected `PORT`.
 - `migrate`
 - `backend`
 - `frontend`
+- optional `fixture-sync` profile service for manual local sync runs
 - `postgres_data` volume
 
 The `migrate` service runs Alembic after PostgreSQL is healthy and before the
 backend starts.
+
+The `fixture-sync` service is not part of the default `docker compose up` path.
+Run it explicitly with `docker compose --profile tools run --rm fixture-sync`
+after setting `TOURNAMENT_SYNC_TOURNAMENT_ID`.
 
 ## CI
 
@@ -82,6 +100,11 @@ is configured.
 Render is configured with `autoDeployTrigger: checksPass`, so services deploy
 from the linked branch only after GitHub checks pass.
 
+`render.yaml` defines the scheduled sync as a cron service. Render's Blueprint
+reference supports `type: cron`, a cron-expression `schedule`, and
+`dockerCommand` for Docker-based services. The cron service should be paused or
+left without production variables until the production tournament UUID exists.
+
 ## Operational Notes
 
 - Keep `ENVIRONMENT=production` in Render.
@@ -94,3 +117,8 @@ from the linked branch only after GitHub checks pass.
   usually simpler for migrations.
 - Keep migrations backward-compatible when possible.
 - Check backend `/health` and frontend `/health` after each deploy.
+- Check fixture sync cron logs for created/updated/error counts after each run.
+- Use match `provider_last_synced_at`, `sync_source`, and `admin_override` fields
+  as the MVP operational visibility surface.
+- Pause the cron job before investigating repeated provider failures or bad
+  upstream data.

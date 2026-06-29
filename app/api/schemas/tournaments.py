@@ -41,4 +41,7 @@ class MatchRead(BaseModel):
     home_score: int | None = None
     away_score: int | None = None
     winner_team_id: UUID | None = None
-
+    # Provider / audit fields (nullable; populated after sync or admin action)
+    sync_source: str | None = None
+    admin_override: bool = False
+    provider_last_synced_at: datetime | None = None

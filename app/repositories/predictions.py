@@ -174,7 +174,11 @@ class PredictionsRepository:
         scoring_version: str,
     ) -> PredictionScore:
         now = datetime.now(UTC)
-        score = prediction.score
+        score = prediction.score or self.db.scalar(
+            select(PredictionScore).where(
+                PredictionScore.prediction_id == prediction.id,
+            )
+        )
         if score is None:
             score = PredictionScore(
                 prediction_id=prediction.id,
@@ -187,6 +191,7 @@ class PredictionsRepository:
                 calculated_at=now,
             )
             self.db.add(score)
+            prediction.score = score
         else:
             score.points = points
             score.correct_winner = correct_winner

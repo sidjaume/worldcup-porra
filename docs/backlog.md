@@ -8,36 +8,6 @@ None.
 
 ## PLANNED
 
-### BE-005: Knockout Fixture Import and Provider Sync Backend
-
-- Owner: Backend
-- Supporting agents: Architect, DevOps
-- Status: PLANNED
-- Dependencies: ARCH-003 approved contract.
-- Objective: Implement backend services and repositories to import knockout fixtures, map external provider IDs, sync kickoff times/teams/results, align completed-match semantics with ARCH-003, and persist audit metadata.
-- Context: Business rules remain in the Domain/Application layers. API routers must stay thin. Sync operations must be idempotent and safe to rerun.
-- Relevant files: `app/domain/`, `app/services/`, `app/repositories/`, `app/models/`, `app/api/routers/tournaments.py`, `app/api/routers/admin.py`, `app/db/migrations/`, `scripts/`.
-- Expected deliverables: Provider adapter interface; fixture/result sync service; external ID mapping; match audit fields or table; Alembic migration; seed/update command for knockout bracket; normalization for tied completed scores with explicit `winner_team_id`; import/filter path for the knockout subset from the chosen provider candidate; tests.
-- Acceptance criteria: Running sync twice does not duplicate matches or points; provider status values are normalized to internal enums; kickoff changes preserve prediction-lock rules; completed matches may persist tied end-of-play scores together with an advancing winner; finished matches trigger idempotent scoring/progression; failed provider calls do not corrupt existing data.
-- Required tests: Domain/service unit tests, repository integration tests, API/admin tests where endpoints change, migration smoke test.
-- Documentation updates: `docs/api.md`, `docs/database.md`, and `docs/roadmap.md`.
-- Risk: High
-
-### DEVOPS-002: Tournament Data Sync Operations
-
-- Owner: DevOps
-- Supporting agents: Backend
-- Status: PLANNED
-- Dependencies: ARCH-003 provider decision; BE-005 sync entrypoint.
-- Objective: Define how scheduled synchronization runs in local, staging, and production environments without exposing provider credentials.
-- Context: Render/Neon remain the target platform. Secrets must be environment variables only.
-- Relevant files: `render.yaml`, `docker-compose.yml`, `.env.example`, `docs/deployment.md`, `docs/environment.md`, `docs/infrastructure.md`, `.github/workflows/`.
-- Expected deliverables: Sync scheduling plan; environment variables for provider config; local run instructions; production runbook; logging/error handling expectations; rollback/retry guidance.
-- Acceptance criteria: A developer can run sync locally; production can run scheduled sync safely; provider API keys are documented but not committed; health/observability signals expose last sync status without leaking payload secrets.
-- Required tests: Config validation or smoke checks where practical; CI/build impact verified.
-- Documentation updates: Deployment, environment, and infrastructure docs.
-- Risk: High
-
 ### UX-002: Admin Data Correction and Sync Visibility Flow
 
 - Owner: Product Designer
@@ -81,6 +51,38 @@ None.
 - Risk: High
 
 ## DONE
+
+### BE-005: Knockout Fixture Import and Provider Sync Backend
+
+- Owner: Backend
+- Supporting agents: Architect, DevOps
+- Status: DONE
+- Dependencies: ARCH-003 approved contract.
+- Objective: Implement backend services and repositories to import knockout fixtures, map external provider IDs, sync kickoff times/teams/results, align completed-match semantics with ARCH-003, and persist audit metadata.
+- Context: Business rules remain in the Domain/Application layers. API routers must stay thin. Sync operations must be idempotent and safe to rerun.
+- Relevant files: `app/domain/`, `app/services/`, `app/repositories/`, `app/models/`, `app/api/routers/tournaments.py`, `app/api/routers/admin.py`, `app/db/migrations/`, `app/providers/`, `scripts/`.
+- Expected deliverables: Provider adapter interface; fixture/result sync service; external ID mapping; match audit fields; Alembic migration; sync command for knockout bracket operations; normalization for tied completed scores with explicit `winner_team_id`; import/filter path for the knockout subset from the chosen provider candidate; tests.
+- Acceptance criteria: Running sync twice does not duplicate matches or points; provider status values are normalized to internal enums; kickoff changes preserve prediction-lock rules; completed matches may persist tied end-of-play scores together with an advancing winner; finished matches trigger idempotent scoring/progression; failed provider calls do not corrupt existing data.
+- Required tests: Domain/service unit tests, repository integration tests, API/admin tests where endpoints change, migration smoke test.
+- Documentation updates: `docs/api.md`, `docs/database.md`, `docs/environment.md`, and `docs/roadmap.md`.
+- Risk: High
+- Completion evidence: Added provider protocol and `WorldCup2026Adapter` normalization/filtering for knockout matches; added provider mapping/audit fields and Alembic migration; added idempotent `FixtureSyncService`; added admin kickoff correction and admin-triggered provider sync endpoints; updated scoring to use explicit advancing winner semantics for tied completed results; fixed prediction-score upsert idempotency; added CLI sync entrypoint; updated API/database/environment/roadmap docs. Follow-up review findings were fixed by making malformed provider payloads fail loudly and making provider sync phases atomic across admin and script entrypoints. Ruff passed. Backend pytest matrix passed with 53 tests, including migration, repository, provider, service, and script coverage. Independent Reviewer gate found no blocking issues for BE-005/DEVOPS-002.
+
+### DEVOPS-002: Tournament Data Sync Operations
+
+- Owner: DevOps
+- Supporting agents: Backend
+- Status: DONE
+- Dependencies: ARCH-003 provider decision; BE-005 sync entrypoint.
+- Objective: Define how scheduled synchronization runs in local, staging, and production environments without exposing provider credentials.
+- Context: Render/Neon remain the target platform. Secrets must be environment variables only.
+- Relevant files: `render.yaml`, `docker-compose.yml`, `.env.example`, `docs/deployment.md`, `docs/environment.md`, `docs/infrastructure.md`, `.github/workflows/`.
+- Expected deliverables: Sync scheduling plan; environment variables for provider config; local run instructions; production runbook; logging/error handling expectations; rollback/retry guidance.
+- Acceptance criteria: A developer can run sync locally; production can run scheduled sync safely; provider API keys are documented but not committed; health/observability signals expose last sync status without leaking payload secrets.
+- Required tests: Config validation or smoke checks where practical; CI/build impact verified.
+- Documentation updates: Deployment, environment, and infrastructure docs.
+- Risk: High
+- Completion evidence: Added Render cron blueprint service `worldcup-pool-fixture-sync` using the backend Docker image and documented 15-minute schedule; wired provider and sync environment variables in `render.yaml`, `.env.example`, and Docker Compose; added optional local `fixture-sync` Compose profile service; documented local run instructions, production runbook, logging/error expectations, retry guidance, manual fallback, rollback/pause steps, and MVP observability through cron logs plus match audit fields. Follow-up review findings were fixed by making the CLI `all` mode commit once only after all sync phases succeed and roll back on phase errors. Validation passed: YAML parse for `render.yaml` and `docker-compose.yml`; `docker compose --env-file .env.example --profile tools config` rendered successfully; `tests/config` passed; backend/script matrix passed with 53 tests; independent Reviewer gate found no blocking issues for BE-005/DEVOPS-002.
 
 ### ARCH-003: Knockout Data Source and Contract Decision
 
@@ -282,7 +284,7 @@ None.
 - Out of scope: Group-stage management, qualification calculations, league standings, and scraping as a primary production data source.
 - Architecture decision: Use the hybrid model from [ARCH-003 ADR](./decisions/arch-003-knockout-data-source-and-result-contract.md): official/manual bracket seed, one approved provider adapter for operational updates, and admin fallback with auditable overrides. The preferred initial free candidate is `rezarahiminia/worldcup2026`, consumed through import/self-hosting or a controlled adapter rather than as a sole third-party uptime dependency.
 - Canonical result semantics: completed knockout matches are scored from end-of-play goals, while `winner_team_id` represents the advancing team; penalty shoot-out goals do not count toward exact-score or team-goal bonuses.
-- Next executable sequence: `BE-005` backend import/sync and result normalization, `DEVOPS-002` sync scheduling/ops, `UX-002` admin correction flow, `FE-006` admin UI, then `REV-003`.
+- Next executable sequence: `UX-002` admin correction flow, `FE-006` admin UI, then `REV-003`.
 - Acceptance criteria: The app can initialize knockout fixtures, sync teams/times/results from an approved source, audit changes, handle provider failure through admin fallback, and recalculate scoring idempotently after finished matches.
 - Risk: High
 
