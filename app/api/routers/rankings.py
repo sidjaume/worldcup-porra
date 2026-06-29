@@ -39,6 +39,6 @@ def rankings(
             correct_winners,
             predictions_scored,
             predictions_submitted,
+            _joined_at,
         ) in enumerate(rows, start=1)
     ]
-

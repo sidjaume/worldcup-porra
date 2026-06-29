@@ -1,9 +1,9 @@
 import { apiRequest } from "@/lib/api/client";
-import { getApiBaseUrl, getFrontendBaseUrl } from "@/lib/config";
+import { getBrowserApiBaseUrl, getFrontendBaseUrl } from "@/lib/config";
 import type { AuthExchangeResponse, AuthTokenResponse } from "@/types/api";
 
 export function googleLoginUrl(): string {
-  const url = new URL(`${getApiBaseUrl()}/api/v1/auth/google/start`);
+  const url = new URL(`${getBrowserApiBaseUrl()}/api/v1/auth/google/start`);
   url.searchParams.set("redirect_uri", `${getFrontendBaseUrl()}/auth/callback`);
   return url.toString();
 }

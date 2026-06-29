@@ -79,6 +79,10 @@ from the linked branch only after GitHub checks pass.
 
 - Keep `ENVIRONMENT=production` in Render.
 - Use Render secret values for credentials.
+- Configure `GOOGLE_REDIRECT_URI` to the backend callback URL:
+  `https://<backend-host>/api/v1/auth/google/callback`.
+- Configure `FRONTEND_BASE_URL` and `ALLOWED_ORIGINS` to the public frontend
+  origin, and `BACKEND_BASE_URL` to the public backend origin.
 - Use Neon pooled or direct URLs according to the workload. Direct URLs are
   usually simpler for migrations.
 - Keep migrations backward-compatible when possible.

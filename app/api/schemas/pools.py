@@ -40,6 +40,12 @@ class PoolDetail(BaseModel):
     created_at: datetime
 
 
+class PoolUpdated(BaseModel):
+    id: UUID
+    name: str
+    is_active: bool
+
+
 class JoinPoolRequest(BaseModel):
     invite_code: str = Field(min_length=4, max_length=64)
 
@@ -60,4 +66,3 @@ class ParticipantRead(BaseModel):
     display_name: str
     role: PoolRole
     joined_at: datetime
-

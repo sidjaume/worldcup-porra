@@ -91,6 +91,8 @@ Then configure:
 - `ALLOWED_ORIGINS` with the public frontend URL.
 
 The redirect URI must match exactly in Google Cloud Console and Render.
+When `ENVIRONMENT=production`, backend startup requires these values to be set
+explicitly and rejects localhost URLs.
 
 ## Local Docker
 

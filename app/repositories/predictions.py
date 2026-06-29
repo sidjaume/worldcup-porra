@@ -10,6 +10,8 @@ from app.models.pool import PoolParticipant
 from app.models.prediction import Prediction, PredictionScore
 from app.models.user import User
 
+RankingRow = tuple[User, int, int, int, int, int, datetime]
+
 
 class PredictionsRepository:
     def __init__(self, db: Session) -> None:
@@ -109,15 +111,25 @@ class PredictionsRepository:
             )
         )
 
-    def list_scored_rows(self, pool_id: UUID) -> list[tuple[User, int, int, int, int, int]]:
+    def list_scored_rows(
+        self,
+        pool_id: UUID,
+    ) -> list[RankingRow]:
         rows = self.db.execute(
             select(
                 User,
                 func.coalesce(func.sum(PredictionScore.points), 0).label("total_points"),
-                func.coalesce(func.sum(PredictionScore.exact_score.cast(Integer)), 0).label("exact_scores"),
-                func.coalesce(func.sum(PredictionScore.correct_winner.cast(Integer)), 0).label("correct_winners"),
+                func.coalesce(
+                    func.sum(PredictionScore.exact_score.cast(Integer)),
+                    0,
+                ).label("exact_scores"),
+                func.coalesce(
+                    func.sum(PredictionScore.correct_winner.cast(Integer)),
+                    0,
+                ).label("correct_winners"),
                 func.count(PredictionScore.id).label("predictions_scored"),
                 func.count(Prediction.id).label("predictions_submitted"),
+                PoolParticipant.joined_at,
             )
             .join(PoolParticipant, PoolParticipant.user_id == User.id)
             .outerjoin(
@@ -127,7 +139,7 @@ class PredictionsRepository:
             .outerjoin(PredictionScore, PredictionScore.prediction_id == Prediction.id)
             .where(PoolParticipant.pool_id == pool_id)
             .where(PoolParticipant.status == ParticipantStatus.ACTIVE)
-            .group_by(User.id)
+            .group_by(User.id, PoolParticipant.joined_at)
         )
         return [
             (
@@ -137,6 +149,7 @@ class PredictionsRepository:
                 int(correct_winners or 0),
                 int(predictions_scored or 0),
                 int(predictions_submitted or 0),
+                joined_at,
             )
             for (
                 user,
@@ -145,6 +158,7 @@ class PredictionsRepository:
                 correct_winners,
                 predictions_scored,
                 predictions_submitted,
+                joined_at,
             ) in rows
         ]
 

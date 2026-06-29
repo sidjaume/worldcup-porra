@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: MVP implementation slices exist and are pending reconciliation, review, and production configuration.
+Status: MVP implementation slices exist and are pending review and production configuration.
 Last reconciled: 2026-06-29.
 
 Implementation has already begun. This roadmap now describes the intended
@@ -43,7 +43,7 @@ Each phase should finish with:
 
 Current gate status:
 
-- Architecture/API/database/roadmap reconciliation: in progress under ORCH-001.
+- Architecture/API/database/roadmap reconciliation: pending review under ORCH-001.
 - Independent production-readiness review: pending under REV-001.
 - Production deployment: blocked until Render, Neon, Google OAuth, and secrets are configured outside the repository.
 - OAuth/environment alignment: pending DevOps/Backend follow-up.
@@ -197,7 +197,7 @@ Acceptance criteria:
 
 ## Phase 6: Results, Scoring, and Rankings
 
-Status: Implemented initial slice, pending tie-breaker/contract decision and Reviewer validation.
+Status: Implemented initial slice, pending Reviewer validation.
 
 Deliverables:
 
@@ -218,9 +218,6 @@ Tests:
 Acceptance criteria:
 
 - After a match result is entered, users see updated points and rankings.
-
-Known follow-up: decide whether ranking ties should use earliest joined
-participant or display name as the final deterministic tie-breaker.
 
 ## Phase 7: Frontend MVP UX
 
@@ -310,7 +307,7 @@ Includes phases 5-6.
 
 Outcome: Users can submit predictions, admins can enter results, and rankings update.
 
-Status: Implemented initial slice, pending review and ranking tie-breaker decision.
+Status: Implemented initial slice, pending review.
 
 ### Milestone 4: Deployed MVP
 
@@ -348,8 +345,6 @@ Status: Planned/deferred.
 - Who can administer tournament matches in the first release: an environment-configured admin list, pool owners, or a global admin role? Current implementation uses `ADMIN_EMAILS`.
 - Should invite codes be human-friendly short codes or longer URL-safe tokens? Human-friendly is easier for private groups; longer tokens reduce guessing risk.
 - Should predictions become visible at kickoff or only after the match is completed? Current implementation reveals all match predictions after the match locks, not only after completion.
-- Should admin match update remain a completion-only endpoint, or should it support broader schedule/team/status updates as currently described in `docs/api.md`?
-- Should ranking ties use earliest joined participant or display name as the final tie-breaker?
 
 ## Possible Post-MVP Improvements
 

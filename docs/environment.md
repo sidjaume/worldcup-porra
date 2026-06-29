@@ -46,7 +46,16 @@ For local Google OAuth, use this exact redirect URI:
 http://localhost:8000/api/v1/auth/google/callback
 ```
 
+This is the FastAPI backend callback. The Next.js frontend still runs at
+`http://localhost:3000`, and `FRONTEND_BASE_URL` plus `ALLOWED_ORIGINS` should
+use that frontend origin locally.
+
 If you use `127.0.0.1`, update both `.env` and Google Cloud Console.
+
+In production, `ENVIRONMENT=production` requires explicit values for
+`DATABASE_URL`, OAuth credentials, `SECRET_KEY`, `GOOGLE_REDIRECT_URI`,
+`FRONTEND_BASE_URL`, `BACKEND_BASE_URL`, and `ALLOWED_ORIGINS`. Localhost
+URLs are rejected for production settings.
 
 ## Production Secret Generation
 

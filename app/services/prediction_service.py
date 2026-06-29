@@ -104,7 +104,7 @@ class PredictionService:
     def rankings(self, *, pool_id: UUID, user_id: UUID):
         self._require_active_participant(pool_id=pool_id, user_id=user_id)
         rows = self.predictions.list_scored_rows(pool_id)
-        rows.sort(key=lambda row: (-row[1], -row[2], -row[3], row[0].display_name.lower()))
+        rows.sort(key=lambda row: (-row[1], -row[2], -row[3], row[6]))
         return rows
 
     def _require_active_participant(self, *, pool_id: UUID, user_id: UUID):

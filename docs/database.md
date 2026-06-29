@@ -1,6 +1,6 @@
 # Database Design
 
-Status: Initial schema migration exists and is pending database/architecture review.
+Status: Initial schema migration reconciled; targeted contract decisions applied.
 Last reconciled: 2026-06-29.
 
 This document remains the target database design. It now also records how the
@@ -66,7 +66,6 @@ and should be reviewed by Backend/Reviewer before production:
 - `teams`: the documented unique `(tournament_id, fifa_code)` constraint is implemented as a normal unique constraint, not a partial unique index excluding null `fifa_code` values. PostgreSQL allows multiple nulls in a unique constraint, so behavior is acceptable, but the implementation detail differs from the wording.
 - `predictions`: pool/match tournament consistency and active pool membership are enforced in the service layer, not by composite foreign keys or database constraints.
 - `prediction_scores`: rankings are derived from queries, not a database view. That is acceptable for MVP, but the docs should keep calling it derived rather than a stored ranking table.
-- Ranking tie-breaker: implementation currently uses display name as the final tie-breaker; this document recommends earliest joined participant. Architect/Backend should settle the contract.
 
 No schema change is made by this reconciliation. These gaps should become
 Backend-owned tasks if the Reviewer decides database-level enforcement is
@@ -391,11 +390,6 @@ Recommended ordering:
 2. Exact scores descending.
 3. Correct winners descending.
 4. Earliest joined participant ascending.
-
-Current implementation note: the backend currently uses display name as the
-final tie-breaker instead of earliest joined participant. This needs an
-Architect/Backend decision before the API/database contract is considered
-closed.
 
 If performance becomes an issue, add a materialized view or cached `pool_rankings` table updated after match scoring. This is not needed for the MVP.
 

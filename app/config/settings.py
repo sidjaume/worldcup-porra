@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Annotated, Literal
+from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -20,10 +21,10 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = ""
-    frontend_base_url: str = "http://localhost:8501"
+    frontend_base_url: str = "http://localhost:3000"
     backend_base_url: str = "http://localhost:8000"
     allowed_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:8501"]
+        default_factory=lambda: ["http://localhost:3000"]
     )
     admin_emails: Annotated[list[str], NoDecode] = Field(default_factory=list)
     scoring_version: str = "mvp-2026-v1"
@@ -51,22 +52,49 @@ class Settings(BaseSettings):
     def validate_production_secrets(self) -> None:
         if self.environment != "production":
             return
+        required_settings = (
+            "database_url",
+            "secret_key",
+            "google_client_id",
+            "google_client_secret",
+            "google_redirect_uri",
+            "frontend_base_url",
+            "backend_base_url",
+            "allowed_origins",
+        )
         missing = [
             name
-            for name in (
-                "database_url",
-                "secret_key",
-                "google_client_id",
-                "google_client_secret",
-                "google_redirect_uri",
-            )
-            if not getattr(self, name)
+            for name in required_settings
+            if name not in self.model_fields_set or not getattr(self, name)
         ]
         if missing:
             missing_list = ", ".join(missing)
             raise RuntimeError(f"Missing production settings: {missing_list}")
         if self.secret_key == "dev-secret-change-me":
             raise RuntimeError("SECRET_KEY must be changed in production.")
+        local_url_settings = (
+            "database_url",
+            "google_redirect_uri",
+            "frontend_base_url",
+            "backend_base_url",
+        )
+        local_settings = [
+            name
+            for name in local_url_settings
+            if self._is_local_url(getattr(self, name))
+        ]
+        if any(self._is_local_url(origin) for origin in self.allowed_origins):
+            local_settings.append("allowed_origins")
+        if local_settings:
+            local_list = ", ".join(local_settings)
+            raise RuntimeError(
+                f"Production settings must not use localhost URLs: {local_list}"
+            )
+
+    @staticmethod
+    def _is_local_url(value: str) -> bool:
+        hostname = urlparse(value).hostname
+        return hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 @lru_cache

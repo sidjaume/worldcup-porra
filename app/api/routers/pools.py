@@ -14,12 +14,12 @@ from app.api.schemas.pools import (
     PoolDetail,
     PoolRead,
     PoolUpdate,
+    PoolUpdated,
     RotateInviteCodeResponse,
 )
 from app.config.settings import Settings
-from app.domain.enums import ParticipantStatus, PoolRole
+from app.domain.enums import PoolRole
 from app.models.user import User
-from app.services.errors import ForbiddenError, NotFoundError, ValidationError
 from app.services.pool_service import PoolService
 
 
@@ -91,29 +91,24 @@ def get_pool(
     )
 
 
-@router.patch("/{pool_id}", response_model=PoolDetail)
+@router.patch("/{pool_id}", response_model=PoolUpdated)
 def update_pool(
     pool_id: UUID,
     request: PoolUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(db_dependency),
     settings: Settings = Depends(settings_dependency),
-) -> PoolDetail:
-    service = PoolService(db, settings)
-    pool = service.require_owner(pool_id=pool_id, user_id=current_user.id)
-    if request.name is not None:
-        pool.name = request.name
-    if request.is_active is not None:
-        pool.is_active = request.is_active
-    db.commit()
-    db.refresh(pool)
-    return PoolDetail(
+) -> PoolUpdated:
+    pool = PoolService(db, settings).update_pool(
+        pool_id=pool_id,
+        user_id=current_user.id,
+        name=request.name,
+        is_active=request.is_active,
+    )
+    return PoolUpdated(
         id=pool.id,
         name=pool.name,
-        tournament_id=pool.tournament_id,
-        owner_user_id=pool.owner_user_id,
-        participant_count=service.pools.participant_count(pool.id),
-        created_at=pool.created_at,
+        is_active=pool.is_active,
     )
 
 
@@ -161,18 +156,11 @@ def remove_participant(
     db: Session = Depends(db_dependency),
     settings: Settings = Depends(settings_dependency),
 ) -> None:
-    service = PoolService(db, settings)
-    pool = service.require_owner(pool_id=pool_id, user_id=current_user.id)
-    if pool.owner_user_id == user_id:
-        raise ValidationError("Pool owner cannot remove themselves.")
-    participant = service.pools.get_participant(pool_id=pool_id, user_id=user_id)
-    if participant is None:
-        raise NotFoundError("Participant not found.")
-    if participant.status != ParticipantStatus.ACTIVE:
-        raise ForbiddenError("Participant is already inactive.")
-    participant.status = ParticipantStatus.REMOVED
-    participant.removed_at = datetime.now(UTC)
-    db.commit()
+    PoolService(db, settings).remove_participant(
+        pool_id=pool_id,
+        owner_user_id=current_user.id,
+        participant_user_id=user_id,
+    )
 
 
 @router.post("/{pool_id}/invite-code/rotate", response_model=RotateInviteCodeResponse)
@@ -190,4 +178,3 @@ def rotate_invite_code(
         invite_code=invite_code,
         rotated_at=datetime.now(UTC),
     )
-

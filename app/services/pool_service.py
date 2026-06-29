@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.domain.enums import ParticipantStatus, PoolRole
 from app.repositories.pools import PoolsRepository
 from app.repositories.tournaments import TournamentsRepository
-from app.services.errors import ConflictError, ForbiddenError, NotFoundError
+from app.services.errors import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.services.security import SecurityService
 from app.config.settings import Settings
 
@@ -56,6 +57,23 @@ class PoolService:
             raise ForbiddenError("Only the pool owner can perform this action.")
         return pool
 
+    def update_pool(
+        self,
+        *,
+        pool_id: UUID,
+        user_id: UUID,
+        name: str | None,
+        is_active: bool | None,
+    ):
+        pool = self.require_owner(pool_id=pool_id, user_id=user_id)
+        if name is not None:
+            pool.name = name
+        if is_active is not None:
+            pool.is_active = is_active
+        self.db.commit()
+        self.db.refresh(pool)
+        return pool
+
     def join_by_invite_code(self, *, user_id: UUID, invite_code: str):
         pool = self.pools.get_by_invite_hash(self.security.token_hash(invite_code))
         if pool is None:
@@ -76,6 +94,28 @@ class PoolService:
         self.get_member_pool(pool_id=pool_id, user_id=user_id)
         return self.pools.list_participants(pool_id)
 
+    def remove_participant(
+        self,
+        *,
+        pool_id: UUID,
+        owner_user_id: UUID,
+        participant_user_id: UUID,
+    ) -> None:
+        pool = self.require_owner(pool_id=pool_id, user_id=owner_user_id)
+        if pool.owner_user_id == participant_user_id:
+            raise ValidationError("Pool owner cannot remove themselves.")
+        participant = self.pools.get_participant(
+            pool_id=pool_id,
+            user_id=participant_user_id,
+        )
+        if participant is None:
+            raise NotFoundError("Participant not found.")
+        if participant.status != ParticipantStatus.ACTIVE:
+            raise ForbiddenError("Participant is already inactive.")
+        participant.status = ParticipantStatus.REMOVED
+        participant.removed_at = datetime.now(UTC)
+        self.db.commit()
+
     def rotate_invite_code(self, *, pool_id: UUID, user_id: UUID) -> str:
         pool = self.require_owner(pool_id=pool_id, user_id=user_id)
         for _ in range(5):
@@ -87,4 +127,3 @@ class PoolService:
             except IntegrityError:
                 self.db.rollback()
         raise ConflictError("Could not generate a unique invite code.")
-

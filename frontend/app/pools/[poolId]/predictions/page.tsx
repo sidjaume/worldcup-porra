@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { MatchPredictionCard } from "@/components/predictions/MatchPredictionCard";
 import { StageTabs } from "@/components/predictions/StageTabs";
+import { PoolSubnav } from "@/components/pools/PoolSubnav";
 import { getPool } from "@/lib/api/pools";
 import { listPredictions } from "@/lib/api/predictions";
 import { listMatches } from "@/lib/api/tournaments";
@@ -41,6 +42,7 @@ export default async function PredictionsPage({
             Submit predicted scores before each match locks.
           </p>
         </header>
+        <PoolSubnav poolId={poolId} poolName={pool.name} />
         <StageTabs activeStage={activeStage} basePath={`/pools/${poolId}/predictions`} />
         <div className="grid gap-4">
           {matches.length ? (

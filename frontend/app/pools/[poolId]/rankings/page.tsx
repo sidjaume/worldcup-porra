@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PoolSubnav } from "@/components/pools/PoolSubnav";
 import { RankingTable } from "@/components/rankings/RankingTable";
 import { Card } from "@/components/ui/Card";
 import { getPool } from "@/lib/api/pools";
@@ -29,6 +30,7 @@ export default async function RankingsPage({
             Rankings are read directly from backend-scored predictions.
           </p>
         </header>
+        <PoolSubnav poolId={poolId} poolName={pool.name} />
         <Card>
           <RankingTable rows={rankings} />
         </Card>

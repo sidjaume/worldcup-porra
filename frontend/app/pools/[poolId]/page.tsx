@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { BarChart3, ListChecks } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { InviteCodeForm } from "@/components/pools/InviteCodeForm";
 import { ParticipantList } from "@/components/pools/ParticipantList";
+import { PoolSubnav } from "@/components/pools/PoolSubnav";
 import { PoolSettingsForm } from "@/components/pools/PoolSettingsForm";
 import { RankingTable } from "@/components/rankings/RankingTable";
 import { Card } from "@/components/ui/Card";
@@ -40,23 +39,8 @@ export default async function PoolDetailPage({
             <h1 className="text-3xl font-bold">{pool.name}</h1>
             <p className="mt-2 text-slate-600">{pool.participant_count} participants</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              className="inline-flex items-center gap-2 rounded-md border border-grass bg-grass px-4 py-2 text-sm font-semibold text-white"
-              href={`/pools/${poolId}/predictions`}
-            >
-              <ListChecks aria-hidden="true" size={16} />
-              Predictions
-            </Link>
-            <Link
-              className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold"
-              href={`/pools/${poolId}/rankings`}
-            >
-              <BarChart3 aria-hidden="true" size={16} />
-              Rankings
-            </Link>
-          </div>
         </header>
+        <PoolSubnav poolId={poolId} poolName={pool.name} />
 
         <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
           <Card>

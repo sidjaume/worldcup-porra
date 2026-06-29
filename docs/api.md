@@ -1,6 +1,6 @@
 # API Design
 
-Status: Implemented MVP API surface exists and is pending contract review.
+Status: Implemented MVP API surface reconciled; targeted contract decisions applied.
 Last reconciled: 2026-06-29.
 
 This file is the intended API contract plus reconciliation notes for the API
@@ -45,17 +45,15 @@ The Next.js frontend API client currently calls the documented `/api/v1`
 surfaces. This does not replace the need for Reviewer validation of auth,
 authorization, validation, accessibility, and error behavior.
 
-## Contract Reconciliation Gaps
+## Contract Reconciliation Notes
 
-The following differences were observed during ORCH-001 and need specialist
-follow-up rather than silent code changes:
+The ARCH-002 decisions are reflected in this contract:
 
-- `PATCH /api/v1/pools/{pool_id}`: implemented response model is `PoolDetail` and does not include `is_active`; the example below includes `is_active`. Architect/Backend should decide whether to add `is_active` to `PoolDetail` or narrow the documented response.
-- `PATCH /api/v1/admin/matches/{match_id}`: implemented behavior completes a match by accepting `home_score`, `away_score`, and `winner_team_id`; the contract text says it can also update schedule, teams, and status. Backend should either add the broader update behavior or the contract should be narrowed to a completion endpoint.
-- `POST /api/v1/admin/matches/{match_id}/rescore`: implemented response is `MatchRead`. Contract should explicitly document this response if accepted.
-- Rankings: implementation tie-breaks by total points, exact scores, correct winners, then display name. `docs/database.md` recommends earliest joined participant as the final tie-breaker. Backend/Architect should choose one deterministic rule.
-- OAuth redirect configuration: the backend-owned callback should be `BACKEND_BASE_URL/api/v1/auth/google/callback`; `.env.example` currently disagrees with Docker Compose. DevOps/Backend should align environment examples and deployment docs.
-- Error format is implemented for service/domain errors and unauthorized cases; FastAPI/Pydantic `422` validation errors still use FastAPI's default shape unless a custom handler is added. Reviewer/Backend should decide whether full standardization is required for MVP.
+- `PATCH /api/v1/admin/matches/{match_id}` is a match-completion endpoint only.
+- `POST /api/v1/admin/matches/{match_id}/rescore` returns `MatchRead`.
+- Rankings are ordered by total points descending, exact scores descending, correct winners descending, then earliest active participant join time ascending.
+
+Error format is implemented for service/domain errors, unauthorized cases, and FastAPI/Pydantic `422` request validation errors.
 
 ## Frontend/Backend Contract Rules
 
@@ -349,10 +347,6 @@ Response:
 }
 ```
 
-Current implementation note: this endpoint currently returns the `PoolDetail`
-shape (`id`, `name`, `tournament_id`, `owner_user_id`, `participant_count`,
-`created_at`) and omits `is_active`. This is an open contract gap.
-
 ### POST `/api/v1/pools/join`
 
 Joins a pool by invite code.
@@ -578,6 +572,13 @@ Response:
 
 Returns aggregate standings for the pool.
 
+Ordering:
+
+1. `total_points` descending.
+2. `exact_scores` descending.
+3. `correct_winners` descending.
+4. Active participant `joined_at` ascending.
+
 Response:
 
 ```json
@@ -605,10 +606,11 @@ Creates a match. Admin-only.
 
 ### PATCH `/api/v1/admin/matches/{match_id}`
 
-Updates schedule, teams, status, or scores. Admin-only.
+Completes a match. Admin-only. This endpoint intentionally accepts only match
+completion fields; broader schedule, team, or status updates are outside the
+MVP admin contract.
 
-Current implementation note: this endpoint currently completes a match only,
-using:
+Request:
 
 ```json
 {
@@ -618,8 +620,10 @@ using:
 }
 ```
 
-It returns `MatchRead`, advances the winner when configured, and scores
-predictions for that match.
+Response: `MatchRead`.
+
+Completing a match advances the winner when configured and scores predictions
+for that match.
 
 When a match is marked completed, the backend should:
 
@@ -631,7 +635,7 @@ When a match is marked completed, the backend should:
 
 Recalculates scores for a completed match. Admin-only.
 
-Current implementation response: `MatchRead`.
+Response: `MatchRead`.
 
 ## Authentication Flow
 

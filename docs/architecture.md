@@ -1,6 +1,6 @@
 # Architecture
 
-Status: Implementation exists and is pending architecture/reviewer reconciliation.
+Status: Reconciled with current implementation; pending Reviewer approval.
 Last reconciled: 2026-06-29.
 
 This document remains the target architecture and contract governance source. It
@@ -437,16 +437,11 @@ Contract changes require:
 ## Reconciliation Findings
 
 Open architecture/API/database questions are tracked as follow-up work rather
-than being silently changed in code:
+than being silently changed in code. ARCH-002 settled the admin match
+completion/rescore contract and ranking final tie-breaker, and Backend aligned
+the pool update response with the API contract.
 
-- Backend: ranking tie-breakers in implementation currently sort by total points, exact scores, correct winners, then display name; `docs/database.md` originally recommended earliest joined participant as the final tie-breaker.
-- Backend/API: pool update currently returns the pool detail shape without `is_active`, while the API contract example includes `is_active`.
-- Backend/API: admin `PATCH /api/v1/admin/matches/{match_id}` is currently a match-completion endpoint accepting scores and winner only; the API text describes broader schedule/team/status updates.
-- Backend/API: `POST /api/v1/admin/matches/{match_id}/rescore` currently returns `MatchRead`; the contract should explicitly approve that response or define a scoring-specific response.
 - Database: several invariants are enforced in services rather than database constraints, including completed-match winner/scores, final `next_match_id` rules, and pool/match tournament consistency for predictions.
-- DevOps/Backend: `.env.example` sets `GOOGLE_REDIRECT_URI` to the frontend host with the backend callback path, while Docker Compose uses the backend host callback. The backend-owned OAuth callback contract should be confirmed and the environment examples aligned.
-- DevOps/Backend: `app/config/settings.py` default frontend origin still references the older `localhost:8501`; runtime examples override this to `localhost:3000`, but defaults should be cleaned up by the owning specialist.
-
 These gaps do not require an architecture redesign. They require contract
 decisions and focused Backend, Frontend, or DevOps follow-up tasks before the
 Reviewer can recommend merge or production readiness.
