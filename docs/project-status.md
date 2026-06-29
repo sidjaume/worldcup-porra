@@ -18,6 +18,7 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - DevOps/OAuth configuration audit completed: local defaults use Next.js/FastAPI ports, production settings require explicit URLs/secrets, and localhost production URLs are rejected.
 - Next.js frontend with authenticated shell, pool workflows, prediction pages, rankings, profile, typed API client, and `/health`.
 - Frontend server-side API URL precedence fixed so Docker server calls use `API_BASE_URL` while browser OAuth links use `NEXT_PUBLIC_API_BASE_URL`.
+- Frontend UX/accessibility follow-up completed for mobile navigation, pool subnavigation, mobile rankings/participants, focus states, prediction status/labels, route loading/error states, form feedback, contrast, and invite-code rotation.
 - Docker assets for backend and frontend, local `docker-compose.yml`, Render `render.yaml`, `.dockerignore`, `.env.example`, and deployment/environment/infrastructure docs.
 - GitHub Actions workflow for backend checks, frontend checks, and Docker builds.
 - Local Docker deployment verified with healthy PostgreSQL, backend, frontend, and migration service.
@@ -33,22 +34,22 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - Frontend typecheck: `npm run typecheck` passed.
 - Frontend production build: previous `npm run build` passed; latest rerun after the most recent frontend/backend changes was not completed because the environment denied the required elevated filesystem access.
 - Local deployment: `docker compose ps` shows `db`, `backend`, and `frontend` running; backend `/health` returned `{"status":"ok","database":"ok"}`; frontend `/health` returned `{"status":"ok"}`.
+- Frontend UX/accessibility follow-up: `npm test` passed, 12 tests; `npm run lint` passed; `npm run typecheck` passed.
 
 ## In Progress
 
 - Focused production-readiness re-review after technical fixes.
-- Frontend UX/accessibility follow-up tasks from Product Designer review.
 
 ## Blocked
 
 - Production deployment is blocked until real Render, Neon, and Google OAuth secrets/configuration exist outside the repository.
-- Merge readiness is blocked until the Reviewer completes a focused re-review and frontend UX/accessibility changes requested by Product Designer are resolved or explicitly deferred.
+- Merge readiness is blocked until the Reviewer completes a focused re-review.
 - Local Google OAuth testing is blocked unless Google OAuth credentials are configured. The local backend-owned callback is documented consistently as `http://localhost:8000/api/v1/auth/google/callback`.
 
 ## Pending Review
 
 - Backend implementation and tests.
-- Frontend UX/accessibility follow-up tasks: mobile navigation, mobile rankings/participants, focus-visible states, prediction labeling/status handling, route-level loading/error states, announced feedback, contrast, invite-code rotation safety, and ranking label clarity.
+- Focused Reviewer re-review of completed frontend UX/accessibility follow-up tasks.
 - DevOps deployment assets, CI, and environment documentation.
 - ORCH-001 documentation reconciliation and the remaining documented database/service-enforced invariant gap.
 
@@ -69,6 +70,6 @@ Not deployed to production. Local Docker deployment is healthy.
 
 ## Next Recommended Task
 
-Execute the READY frontend UX/accessibility backlog tasks, then run focused Reviewer re-review.
+Run focused Reviewer re-review.
 
-Rationale: Technical contract/config/test gaps from REV-001 have been addressed. The remaining unblocked work is frontend UX/accessibility polish required by Product Designer before production readiness.
+Rationale: Technical contract/config/test gaps from REV-001 and frontend UX/accessibility follow-up tasks from UX-001 have been addressed. The remaining unblocked work is Reviewer validation before production readiness.

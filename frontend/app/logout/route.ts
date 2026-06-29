@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { logout } from "@/lib/api/auth";
 import { clearSession, getSession } from "@/lib/auth/session";
+import { getFrontendBaseUrl } from "@/lib/config";
 
-export async function POST(request: Request) {
+export async function POST() {
   const session = await getSession();
   if (session) {
     try {
@@ -12,5 +13,5 @@ export async function POST(request: Request) {
     }
   }
   await clearSession();
-  return NextResponse.redirect(new URL("/", request.url), { status: 303 });
+  return NextResponse.redirect(new URL("/", getFrontendBaseUrl()), { status: 303 });
 }

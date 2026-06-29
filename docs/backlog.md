@@ -15,6 +15,46 @@ Last updated: 2026-06-29
 
 ## DONE
 
+### FE-002: Mobile Navigation and Page Context
+
+- Owner: Frontend
+- Supporting agents: Product Designer, Reviewer
+- Dependencies: UX-001 findings
+- Acceptance criteria: Mobile users can navigate primary app sections; active navigation uses visible state and `aria-current`; pool detail, predictions, and rankings keep clear pool context and subnavigation.
+- Status: DONE
+- Risk: Medium
+- Completion evidence: Added primary mobile navigation/current-page state, pool subnavigation, and focused navigation tests.
+
+### FE-003: Mobile-Safe Rankings and Participants
+
+- Owner: Frontend
+- Supporting agents: Product Designer, Reviewer
+- Dependencies: UX-001 findings
+- Acceptance criteria: Rankings and participant lists work on narrow screens without clipping; layout is either horizontally scrollable with clear affordance or responsive card-based; ranking labels are understandable.
+- Status: DONE
+- Risk: Medium
+- Completion evidence: Rankings and participants now render mobile card layouts with clearer metric labels and focused tests.
+
+### FE-004: Accessibility Interaction Pass
+
+- Owner: Frontend
+- Supporting agents: Product Designer, Reviewer
+- Dependencies: UX-001 findings
+- Acceptance criteria: Buttons, links, tabs, and form controls have visible `focus-visible` states; form errors/success messages are announced and associated with controls; color tokens meet WCAG AA for normal text.
+- Status: DONE
+- Risk: Medium
+- Completion evidence: Shared focus-visible styles, darker contrast tokens, stage/nav active states, and announced/associated form feedback added.
+
+### FE-005: Prediction and Invite-Code UX Hardening
+
+- Owner: Frontend
+- Supporting agents: Product Designer, Reviewer
+- Dependencies: UX-001 findings
+- Acceptance criteria: Prediction inputs are labeled with actual team names and respect documented prediction status; route-level loading/error states exist for major pages; invite-code rotation has safer confirmation/copy affordance.
+- Status: DONE
+- Risk: Medium
+- Completion evidence: Prediction form labels now use team names, non-editable prediction statuses are read-only, route loading/error states were added, and invite-code rotation now requires confirmation and supports copy.
+
 ### DEVOPS-001: Environment and OAuth Configuration Audit
 
 - Owner: DevOps
@@ -73,38 +113,6 @@ Last updated: 2026-06-29
 - Findings: Mobile navigation/current-page context, mobile rankings/participants, focus-visible states, prediction input labeling/status handling, route-level loading/error states, announced form feedback, color contrast, invite-code rotation safety, and rankings label clarity need frontend follow-up.
 
 ## READY
-
-### FE-002: Mobile Navigation and Page Context
-
-- Owner: Frontend
-- Supporting agents: Product Designer, Reviewer
-- Dependencies: UX-001 findings
-- Acceptance criteria: Mobile users can navigate primary app sections; active navigation uses visible state and `aria-current`; pool detail, predictions, and rankings keep clear pool context and subnavigation.
-- Risk: Medium
-
-### FE-003: Mobile-Safe Rankings and Participants
-
-- Owner: Frontend
-- Supporting agents: Product Designer, Reviewer
-- Dependencies: UX-001 findings
-- Acceptance criteria: Rankings and participant lists work on narrow screens without clipping; layout is either horizontally scrollable with clear affordance or responsive card-based; ranking labels are understandable.
-- Risk: Medium
-
-### FE-004: Accessibility Interaction Pass
-
-- Owner: Frontend
-- Supporting agents: Product Designer, Reviewer
-- Dependencies: UX-001 findings
-- Acceptance criteria: Buttons, links, tabs, and form controls have visible `focus-visible` states; form errors/success messages are announced and associated with controls; color tokens meet WCAG AA for normal text.
-- Risk: Medium
-
-### FE-005: Prediction and Invite-Code UX Hardening
-
-- Owner: Frontend
-- Supporting agents: Product Designer, Reviewer
-- Dependencies: UX-001 findings
-- Acceptance criteria: Prediction inputs are labeled with actual team names and respect documented prediction status; route-level loading/error states exist for major pages; invite-code rotation has safer confirmation/copy affordance.
-- Risk: Medium
 
 ### REV-002: Focused Production-Readiness Re-review
 

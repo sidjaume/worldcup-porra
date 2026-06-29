@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { Ticket } from "lucide-react";
 import { joinPoolAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
@@ -8,16 +8,27 @@ import { Field, FormMessage, TextInput } from "@/components/ui/Field";
 
 export function JoinPoolForm() {
   const [state, action, pending] = useActionState(joinPoolAction, {});
+  const feedbackId = useId();
 
   return (
-    <form action={action} className="grid gap-4">
+    <form
+      action={action}
+      aria-describedby={state.error ? feedbackId : undefined}
+      className="grid gap-4"
+    >
       <Field label="Invite code">
-        <TextInput name="invite_code" placeholder="ABCD-1234" required />
+        <TextInput
+          aria-describedby={state.error ? feedbackId : undefined}
+          aria-invalid={state.error ? true : undefined}
+          name="invite_code"
+          placeholder="ABCD-1234"
+          required
+        />
       </Field>
-      <FormMessage message={state.error} />
+      <FormMessage id={feedbackId} message={state.error} />
       <Button disabled={pending} type="submit" variant="secondary">
         <Ticket aria-hidden="true" size={16} />
-        Join pool
+        {pending ? "Joining" : "Join pool"}
       </Button>
     </form>
   );

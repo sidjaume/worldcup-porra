@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshSession } from "@/lib/api/auth";
 import { clearSession, getSession, setSession } from "@/lib/auth/session";
+import { getFrontendBaseUrl } from "@/lib/config";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return frontendRedirect("/");
   }
 
   try {
     const tokens = await refreshSession(session.refreshToken);
     await setSession(tokens, session.user ?? undefined);
-    return NextResponse.redirect(new URL(safeNextPath(request), request.url));
+    return frontendRedirect(safeNextPath(request));
   } catch {
     await clearSession();
-    return NextResponse.redirect(new URL("/", request.url));
+    return frontendRedirect("/");
   }
+}
+
+function frontendRedirect(path: string): NextResponse {
+  return NextResponse.redirect(new URL(path, getFrontendBaseUrl()));
 }
 
 function safeNextPath(request: NextRequest): string {

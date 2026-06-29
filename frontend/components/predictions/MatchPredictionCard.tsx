@@ -12,7 +12,9 @@ export function MatchPredictionCard({
   poolId: string;
   prediction?: Prediction;
 }) {
-  const isScheduled = match.status === "scheduled";
+  const homeTeamName = teamName(match.home_team);
+  const awayTeamName = teamName(match.away_team);
+  const canEdit = match.status === "scheduled" && (!prediction || prediction.status === "editable");
 
   return (
     <Card>
@@ -24,11 +26,11 @@ export function MatchPredictionCard({
           <span className="text-sm text-slate-600">{formatDateTime(match.scheduled_at)}</span>
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <p className="text-right font-semibold">{teamName(match.home_team)}</p>
+          <p className="text-right font-semibold">{homeTeamName}</p>
           <p className="rounded-md bg-slate-100 px-3 py-2 text-sm font-bold">
             {scoreLine(match)}
           </p>
-          <p className="font-semibold">{teamName(match.away_team)}</p>
+          <p className="font-semibold">{awayTeamName}</p>
         </div>
         {prediction ? (
           <p className="text-sm text-slate-600">
@@ -36,14 +38,36 @@ export function MatchPredictionCard({
             {prediction.score ? `, ${prediction.score.points} pts` : ""}
           </p>
         ) : null}
-        {isScheduled ? (
-          <PredictionForm matchId={match.id} poolId={poolId} prediction={prediction} />
+        {canEdit ? (
+          <PredictionForm
+            awayTeamName={awayTeamName}
+            homeTeamName={homeTeamName}
+            matchId={match.id}
+            poolId={poolId}
+            prediction={prediction}
+          />
         ) : (
           <p className="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600">
-            Predictions are read-only for this match.
+            {readOnlyMessage(match, prediction)}
           </p>
         )}
       </div>
     </Card>
   );
+}
+
+function readOnlyMessage(match: Match, prediction?: Prediction): string {
+  if (prediction?.status === "locked") {
+    return "Your prediction is locked for this match.";
+  }
+  if (prediction?.status === "scored") {
+    return "This prediction has been scored.";
+  }
+  if (match.status === "completed") {
+    return "Predictions are read-only after the match is completed.";
+  }
+  if (match.status === "cancelled") {
+    return "Predictions are closed because this match was cancelled.";
+  }
+  return "Predictions are read-only for this match.";
 }
