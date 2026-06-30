@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/Card";
-import { formatDateTime, scoreLine, stageLabel, teamName } from "@/lib/format";
-import type { Match, Prediction } from "@/types/api";
+import { formatDateTime, scoreLine, stageLabel, teamName, teamShortName } from "@/lib/format";
+import type { Match, Prediction, TeamBrief } from "@/types/api";
 import { PredictionForm } from "@/components/predictions/PredictionForm";
 
 export function MatchPredictionCard({
@@ -17,20 +17,26 @@ export function MatchPredictionCard({
   const canEdit = match.status === "scheduled" && (!prediction || prediction.status === "editable");
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-t-4 border-t-sky">
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="rounded-md bg-mint px-2 py-1 text-xs font-semibold text-grass">
+          <span className="rounded-md bg-mint px-2 py-1 text-xs font-bold uppercase text-grass">
             {stageLabel(match.stage)} #{match.bracket_position}
           </span>
-          <span className="text-sm text-slate-600">{formatDateTime(match.scheduled_at)}</span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {match.status === "in_progress" ? <LiveBadge minute={match.live_minute} /> : null}
+            {match.status === "completed" ? (
+              <span className="rounded-md bg-ink px-2 py-1 text-xs font-bold uppercase text-paper">
+                Final
+              </span>
+            ) : null}
+            <span className="text-sm text-slate-600">{formatDateTime(match.scheduled_at)}</span>
+          </div>
         </div>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <p className="text-right font-semibold">{homeTeamName}</p>
-          <p className="rounded-md bg-slate-100 px-3 py-2 text-sm font-bold">
-            {scoreLine(match)}
-          </p>
-          <p className="font-semibold">{awayTeamName}</p>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+          <TeamBlock team={match.home_team} align="right" />
+          <MatchScore match={match} />
+          <TeamBlock team={match.away_team} align="left" />
         </div>
         {prediction ? (
           <p className="text-sm text-slate-600">
@@ -58,6 +64,77 @@ export function MatchPredictionCard({
         )}
       </div>
     </Card>
+  );
+}
+
+function TeamBlock({
+  align,
+  team,
+}: {
+  align: "left" | "right";
+  team: TeamBrief | null;
+}) {
+  const name = teamName(team);
+  const fallback = teamShortName(team);
+  const flag = team?.flag_url;
+  const direction = align === "right" ? "sm:flex-row-reverse sm:text-right" : "";
+
+  return (
+    <div className={`flex min-w-0 items-center gap-3 ${direction}`}>
+      {flag ? (
+        <span
+          aria-label={`${name} flag`}
+          className="size-9 shrink-0 rounded-md border border-line bg-white bg-cover bg-center"
+          role="img"
+          style={{ backgroundImage: `url(${flag})` }}
+        />
+      ) : (
+        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-line bg-white text-xs font-bold uppercase text-slate-600">
+          {fallback}
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block truncate text-base font-bold text-ink">{name}</span>
+        <span className="block truncate text-xs font-semibold uppercase text-slate-500">
+          {fallback}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function MatchScore({ match }: { match: Match }) {
+  const isFinal = match.status === "completed";
+  const isLive = match.status === "in_progress";
+  const stateClasses = isLive
+    ? "border-grass bg-mint text-grass"
+    : isFinal
+      ? "border-ink bg-ink text-paper"
+      : "border-line bg-white text-ink";
+
+  return (
+    <div
+      className={`mx-auto grid min-w-20 place-items-center rounded-md border px-4 py-2 text-center shadow-sm ${stateClasses}`}
+    >
+      <span className="text-xl font-black leading-none">{scoreLine(match)}</span>
+      {isFinal ? (
+        <span className="mt-1 text-[0.65rem] font-bold uppercase">Final result</span>
+      ) : null}
+      {match.status === "scheduled" ? (
+        <span className="mt-1 text-[0.65rem] font-bold uppercase text-slate-500">
+          Scheduled
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function LiveBadge({ minute }: { minute: number | null }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-grass px-2 py-1 text-xs font-bold uppercase text-white">
+      <span aria-hidden="true" className="size-2 rounded-full bg-white" />
+      Live{minute !== null ? ` ${minute}'` : ""}
+    </span>
   );
 }
 

@@ -18,6 +18,21 @@ describe("MatchPredictionCard", () => {
     expect(source).toContain("Predictions are closed while this match is in progress.");
   });
 
+  it("renders team flags and compact fallbacks from backend metadata", () => {
+    expect(source).toContain("team?.flag_url");
+    expect(source).toContain('aria-label={`${name} flag`}');
+    expect(source).toContain("teamShortName(team)");
+    expect(source).toContain("size-9");
+  });
+
+  it("shows final and live match state separately from scheduled vs", () => {
+    expect(source).toContain('match.status === "completed"');
+    expect(source).toContain("Final result");
+    expect(source).toContain("<LiveBadge minute={match.live_minute} />");
+    expect(source).toContain("Live{minute !== null");
+    expect(source).toContain("Scheduled");
+  });
+
   it("requires an advancing winner only when entered prediction goals are tied", () => {
     expect(formSource).toContain('name="predicted_winner_team_id"');
     expect(formSource).toContain("homeGoals !== \"\"");

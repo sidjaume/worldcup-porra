@@ -151,6 +151,27 @@ Operations assumption:
   sync is always running; show freshness from the API fields that are actually
   present.
 
+## UX-003 / FE-010 Match Display Notes
+
+The authenticated app uses a World Cup 2026-inspired visual direction without
+copying FIFA, Behance, mascot, logo, or texture assets.
+
+- Default page canvas is light off-white rather than pure white.
+- The palette uses a restrained tournament mix of green, red, blue, warm line
+  color, and sparing gold accents.
+- Match cards should prioritize prediction speed: stage, kickoff/status,
+  teams, score/result, and prediction controls remain compact and readable.
+- `Match.home_team` and `Match.away_team` may include `flag_url`,
+  `fifa_code`, and `short_name` from the backend `TeamBrief` contract.
+- Flag rendering must be optional. If `flag_url` is missing or the team is
+  unknown, show a stable text fallback such as FIFA code, short name, or `TBD`.
+- Completed matches display the final end-of-play score from
+  `home_score`/`away_score`; the frontend must not infer scoring or penalty
+  semantics.
+- In-progress matches display visible `Live` text and may display
+  `live_minute` when the backend exposes a reliable numeric minute.
+- Color is never the only status signal; live/final/locked states require text.
+
 ## UX-002: Admin Data Correction and Sync Visibility Flow
 
 Status: Completed product/UX specification for FE-006.

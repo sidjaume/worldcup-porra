@@ -162,6 +162,43 @@ def test_adapter_treats_nested_zero_team_refs_as_tbd() -> None:
     assert matches[0].away_team_provider_ref is None
 
 
+def test_adapter_parses_live_minute_only_for_in_progress_matches() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                {
+                    "id": "live",
+                    "type": "r32",
+                    "local_date": "06/30/2026 19:00",
+                    "status": "live",
+                    "minute": "67",
+                },
+                {
+                    "id": "scheduled",
+                    "type": "r32",
+                    "local_date": "06/30/2026 21:00",
+                    "status": "scheduled",
+                    "minute": "12",
+                },
+                {
+                    "id": "stoppage",
+                    "type": "r32",
+                    "local_date": "07/01/2026 19:00",
+                    "status": "in_progress",
+                    "minute": "45+2",
+                },
+            ]
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].status == MatchStatus.IN_PROGRESS
+    assert matches[0].live_minute == 67
+    assert matches[1].live_minute is None
+    assert matches[2].live_minute is None
+
+
 def test_adapter_raises_on_malformed_team_record() -> None:
     adapter = PayloadAdapter(
         {

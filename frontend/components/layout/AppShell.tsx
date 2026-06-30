@@ -14,13 +14,18 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-line bg-white/90 backdrop-blur">
+      <header className="border-b border-line bg-paper/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link className="flex min-w-0 items-center gap-2 font-bold" href="/">
-            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-mint text-grass">
+          <Link className="flex min-w-0 items-center gap-3 font-bold" href="/">
+            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-ink text-paper shadow-soft">
               <Trophy aria-hidden="true" size={20} />
             </span>
-            <span className="truncate">World Cup Pool</span>
+            <span className="min-w-0">
+              <span className="block truncate text-base uppercase">World Cup Pool</span>
+              <span className="block truncate text-xs font-semibold uppercase text-grass">
+                2026 Porra
+              </span>
+            </span>
           </Link>
           <div className="hidden md:block">
             <PrimaryNav />

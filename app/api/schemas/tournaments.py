@@ -28,6 +28,9 @@ class TeamRead(BaseModel):
 class TeamBrief(BaseModel):
     id: UUID
     name: str
+    short_name: str | None = None
+    fifa_code: str | None = None
+    flag_url: str | None = None
 
 
 class MatchRead(BaseModel):
@@ -41,6 +44,7 @@ class MatchRead(BaseModel):
     home_score: int | None = None
     away_score: int | None = None
     winner_team_id: UUID | None = None
+    live_minute: int | None = None
     # Provider / audit fields (nullable; populated after sync or admin action)
     sync_source: str | None = None
     admin_override: bool = False

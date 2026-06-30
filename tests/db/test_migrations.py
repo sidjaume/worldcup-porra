@@ -21,7 +21,9 @@ def test_initial_migration_upgrades_and_downgrades_cleanly(
         prediction_columns = {
             column["name"] for column in inspector.get_columns("predictions")
         }
+        match_columns = {column["name"] for column in inspector.get_columns("matches")}
         prediction_foreign_keys = inspector.get_foreign_keys("predictions")
+        assert "live_minute" in match_columns
         assert "predicted_winner_team_id" in prediction_columns
         assert any(
             foreign_key["constrained_columns"] == ["predicted_winner_team_id"]

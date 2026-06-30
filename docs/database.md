@@ -217,6 +217,7 @@ Stores knockout matches and bracket progression links.
 | status | match_status not null default `scheduled` |  |
 | home_score | integer nullable | Actual goals |
 | away_score | integer nullable | Actual goals |
+| live_minute | integer nullable | Provider match clock minute for in-progress matches only |
 | winner_team_id | uuid fk teams(id) nullable | Winner after completion |
 | next_match_id | uuid fk matches(id) nullable | Where winner advances |
 | next_match_slot | next_slot nullable | `home` or `away` |

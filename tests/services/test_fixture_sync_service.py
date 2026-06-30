@@ -152,6 +152,64 @@ def test_import_matches_leaves_completed_status_for_result_sync(
     assert match.winner_team_id is None
 
 
+def test_import_matches_stores_and_clears_live_minute(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Import Live Minute")
+    home = _create_team(db_session, tournament, "Spain", "esp")
+    away = _create_team(db_session, tournament, "Portugal", "por")
+    match = _create_match(db_session, tournament, home, away)
+    db_session.commit()
+    service = FixtureSyncService(db_session, Settings(_env_file=None))
+
+    live_result = service.import_matches(
+        tournament.id,
+        StaticAdapter(
+            teams=[],
+            matches=[
+                ProviderMatch(
+                    provider_ref="m73",
+                    stage=TournamentStage.ROUND_OF_32,
+                    bracket_position=1,
+                    scheduled_at=match.scheduled_at,
+                    status=MatchStatus.IN_PROGRESS,
+                    home_team_provider_ref="esp",
+                    away_team_provider_ref="por",
+                    live_minute=58,
+                )
+            ],
+        ),
+    )
+    db_session.refresh(match)
+
+    assert live_result.errors == []
+    assert match.status == MatchStatus.IN_PROGRESS
+    assert match.live_minute == 58
+
+    scheduled_result = service.import_matches(
+        tournament.id,
+        StaticAdapter(
+            teams=[],
+            matches=[
+                ProviderMatch(
+                    provider_ref="m73",
+                    stage=TournamentStage.ROUND_OF_32,
+                    bracket_position=1,
+                    scheduled_at=match.scheduled_at,
+                    status=MatchStatus.SCHEDULED,
+                    home_team_provider_ref="esp",
+                    away_team_provider_ref="por",
+                )
+            ],
+        ),
+    )
+    db_session.refresh(match)
+
+    assert scheduled_result.errors == []
+    assert match.status == MatchStatus.SCHEDULED
+    assert match.live_minute is None
+
+
 def test_import_matches_creates_completed_provider_fixture_as_scheduled(
     db_session: Session,
 ) -> None:
@@ -273,6 +331,62 @@ def test_completed_tied_result_scores_and_advances_idempotently(
     assert score.correct_winner is True
     assert score.partial_away_goals is True
     assert db_session.scalar(select(func.count(PredictionScore.id))) == 1
+
+
+def test_sync_results_stores_and_clears_live_minute(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Sync Live Minute")
+    home = _create_team(db_session, tournament, "Spain", "esp")
+    away = _create_team(db_session, tournament, "Portugal", "por")
+    match = _create_match(db_session, tournament, home, away)
+    db_session.commit()
+    service = FixtureSyncService(db_session, Settings(_env_file=None))
+
+    live_result = service.sync_results(
+        tournament.id,
+        StaticAdapter(
+            teams=[],
+            matches=[
+                ProviderMatch(
+                    provider_ref="m73",
+                    stage=TournamentStage.ROUND_OF_32,
+                    bracket_position=1,
+                    scheduled_at=match.scheduled_at,
+                    status=MatchStatus.IN_PROGRESS,
+                    live_minute=73,
+                )
+            ],
+        ),
+    )
+    db_session.refresh(match)
+
+    assert live_result.errors == []
+    assert live_result.matches_updated == 1
+    assert match.status == MatchStatus.IN_PROGRESS
+    assert match.live_minute == 73
+
+    scheduled_result = service.sync_results(
+        tournament.id,
+        StaticAdapter(
+            teams=[],
+            matches=[
+                ProviderMatch(
+                    provider_ref="m73",
+                    stage=TournamentStage.ROUND_OF_32,
+                    bracket_position=1,
+                    scheduled_at=match.scheduled_at,
+                    status=MatchStatus.SCHEDULED,
+                )
+            ],
+        ),
+    )
+    db_session.refresh(match)
+
+    assert scheduled_result.errors == []
+    assert scheduled_result.matches_updated == 1
+    assert match.status == MatchStatus.IN_PROGRESS
+    assert match.live_minute is None
 
 
 def test_provider_progression_skips_downstream_admin_override(

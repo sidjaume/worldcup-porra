@@ -1,10 +1,16 @@
 from collections.abc import Generator
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from app.api.main import app
+from app.api.routers.tournaments import serialize_match
 from app.db.session import get_db
+from app.domain.enums import MatchStatus, TournamentStage
+from app.models.match import Match
+from app.models.team import Team
 
 
 class FakeConnection:
@@ -183,3 +189,54 @@ def test_admin_match_correction_request_schemas_match_contract() -> None:
         "in_progress",
         "cancelled",
     ]
+
+
+def test_match_schema_includes_live_minute_and_team_brief_metadata() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    match_read = schemas["MatchRead"]
+    team_brief = schemas["TeamBrief"]
+
+    assert "live_minute" in match_read["properties"]
+    assert "live_minute" not in match_read["required"]
+    assert {"short_name", "fifa_code", "flag_url"}.issubset(
+        team_brief["properties"]
+    )
+    assert team_brief["required"] == ["id", "name"]
+
+
+def test_serialize_match_includes_team_metadata_and_hides_non_live_minute() -> None:
+    tournament_id = uuid4()
+    home = Team(
+        id=uuid4(),
+        tournament_id=tournament_id,
+        name="Spain",
+        short_name="ESP",
+        fifa_code="ESP",
+        flag_url="https://example.test/esp.svg",
+    )
+    away = Team(id=uuid4(), tournament_id=tournament_id, name="Portugal")
+    match = Match(
+        id=uuid4(),
+        tournament_id=tournament_id,
+        stage=TournamentStage.ROUND_OF_32,
+        bracket_position=1,
+        home_team=home,
+        away_team=away,
+        scheduled_at=datetime(2026, 6, 30, 19, tzinfo=UTC),
+        status=MatchStatus.SCHEDULED,
+        live_minute=47,
+        admin_override=False,
+    )
+
+    payload = serialize_match(match)
+
+    assert payload.home_team is not None
+    assert payload.home_team.short_name == "ESP"
+    assert payload.home_team.fifa_code == "ESP"
+    assert payload.home_team.flag_url == "https://example.test/esp.svg"
+    assert payload.away_team is not None
+    assert payload.away_team.short_name is None
+    assert payload.live_minute is None

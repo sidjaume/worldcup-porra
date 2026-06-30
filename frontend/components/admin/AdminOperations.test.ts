@@ -153,6 +153,7 @@ function match(overrides: Partial<Match>): Match {
     home_score: null,
     home_team: null,
     id: "match",
+    live_minute: null,
     provider_last_synced_at: null,
     scheduled_at: "2026-06-29T10:00:00.000Z",
     stage: "round_of_32",

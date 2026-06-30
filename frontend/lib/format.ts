@@ -35,6 +35,11 @@ export function teamName(team: Match["home_team"]): string {
   return team?.name ?? "TBD";
 }
 
+export function teamShortName(team: Match["home_team"]): string {
+  const label = team?.fifa_code ?? team?.short_name ?? team?.name ?? "TBD";
+  return label.length > 10 ? label.slice(0, 3).toUpperCase() : label;
+}
+
 export function scoreLine(match: Match): string {
   if (match.home_score === null || match.away_score === null) {
     return "vs";

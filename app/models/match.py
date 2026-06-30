@@ -87,6 +87,7 @@ class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     home_score: Mapped[int | None] = mapped_column(Integer)
     away_score: Mapped[int | None] = mapped_column(Integer)
+    live_minute: Mapped[int | None] = mapped_column(Integer)
     winner_team_id: Mapped[UUID | None] = mapped_column(
         PostgresUUID(as_uuid=True),
         ForeignKey("teams.id"),

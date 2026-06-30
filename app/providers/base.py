@@ -49,6 +49,7 @@ class ProviderMatch:
     away_team_provider_ref: str | None = None
     home_score: int | None = None
     away_score: int | None = None
+    live_minute: int | None = None
     # Advancing team — set even when scores are tied (penalty winner)
     winner_provider_ref: str | None = None
 

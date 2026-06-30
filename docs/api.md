@@ -1,7 +1,7 @@
 # API Design
 
 Status: Implemented MVP API surface reconciled; targeted contract decisions applied.
-Last reconciled: 2026-06-29.
+Last reconciled: 2026-06-30.
 
 This file is the intended API contract plus reconciliation notes for the API
 surface currently implemented under `app/api`. Frontend and backend work must
@@ -475,23 +475,39 @@ Response:
     "bracket_position": 1,
     "home_team": {
       "id": "uuid",
-      "name": "Spain"
+      "name": "Spain",
+      "short_name": "ESP",
+      "fifa_code": "ESP",
+      "flag_url": "https://example.com/flags/esp.svg"
     },
     "away_team": {
       "id": "uuid",
-      "name": "Austria"
+      "name": "Austria",
+      "short_name": "AUT",
+      "fifa_code": "AUT",
+      "flag_url": "https://example.com/flags/aut.svg"
     },
     "scheduled_at": "2026-06-28T19:00:00Z",
     "status": "scheduled",
     "home_score": null,
     "away_score": null,
     "winner_team_id": null,
+    "live_minute": null,
     "sync_source": null,
     "admin_override": false,
     "provider_last_synced_at": null
   }
 ]
 ```
+
+`home_team` and `away_team` use the embedded `TeamBrief` shape. The metadata
+fields `short_name`, `fifa_code`, and `flag_url` are nullable and may be absent
+from provider data.
+
+`live_minute` is nullable. It is populated only for matches whose status is
+`in_progress` and only when the provider supplies a reliable numeric elapsed
+minute. For `scheduled`, `locked`, `completed`, and `cancelled` matches the API
+returns `live_minute: null`.
 
 ## Predictions
 
@@ -753,6 +769,12 @@ Provider normalization fails closed: unknown provider statuses, missing
 completed-result scores, or missing advancing winners produce sync errors and
 must not default to scheduled. Numeric zero is a valid score and must be
 preserved.
+
+For in-progress matches, provider sync stores a reliable numeric elapsed minute
+as `live_minute`. When provider data reports a non-live state, sync clears any
+previous provider live minute so API responses do not expose stale match-clock
+data. Fixture import follows the same rule and does not preserve stale live
+minutes across reruns.
 
 Request:
 

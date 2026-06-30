@@ -250,6 +250,7 @@ class WorldCup2026Adapter:
 
         home_team_ref = self._team_ref(item, "home")
         away_team_ref = self._team_ref(item, "away")
+        live_minute = self._parse_live_minute(item, status)
 
         home_score: int | None = None
         away_score: int | None = None
@@ -298,6 +299,7 @@ class WorldCup2026Adapter:
             away_team_provider_ref=away_team_ref,
             home_score=home_score,
             away_score=away_score,
+            live_minute=live_minute,
             winner_provider_ref=winner_ref,
         )
 
@@ -350,6 +352,28 @@ class WorldCup2026Adapter:
             return int(value)
         except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _parse_live_minute(
+        item: dict[str, Any],
+        status: MatchStatus,
+    ) -> int | None:
+        if status != MatchStatus.IN_PROGRESS:
+            return None
+        minute = WorldCup2026Adapter._safe_int(
+            WorldCup2026Adapter._first_present(
+                item,
+                "live_minute",
+                "minute",
+                "elapsed",
+                "elapsed_minute",
+                "match_minute",
+                "time_elapsed",
+            )
+        )
+        if minute is None or minute <= 0 or minute > 130:
+            return None
+        return minute
 
     @staticmethod
     def _team_ref(item: dict[str, Any], side: str) -> str | None:

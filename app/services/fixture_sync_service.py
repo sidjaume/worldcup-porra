@@ -184,6 +184,16 @@ class FixtureSyncService:
 
         for pm in provider_matches:
             if pm.status not in (MatchStatus.COMPLETED, MatchStatus.IN_PROGRESS):
+                try:
+                    with self.db.begin_nested():
+                        self._clear_non_live_match_minute(tournament_id, pm, result)
+                except Exception as exc:
+                    msg = (
+                        f"Failed to clear live minute for match "
+                        f"{pm.provider_ref!r}: {exc}"
+                    )
+                    logger.error(msg)
+                    result.errors.append(msg)
                 continue
             try:
                 with self.db.begin_nested():
@@ -260,6 +270,7 @@ class FixtureSyncService:
                 bracket_position=pm.bracket_position,
                 scheduled_at=pm.scheduled_at,
                 status=fixture_status,
+                live_minute=self._live_minute_for_status(fixture_status, pm.live_minute),
                 home_team_id=home_team_id,
                 away_team_id=away_team_id,
                 provider_ref=pm.provider_ref,
@@ -296,6 +307,10 @@ class FixtureSyncService:
                 changed = True
             if existing.status != fixture_status and existing.status != MatchStatus.COMPLETED:
                 existing.status = fixture_status
+                changed = True
+            live_minute = self._live_minute_for_status(fixture_status, pm.live_minute)
+            if existing.live_minute != live_minute:
+                existing.live_minute = live_minute
                 changed = True
 
             existing.provider_last_synced_at = datetime.now(tz=UTC)
@@ -363,8 +378,31 @@ class FixtureSyncService:
             prediction_service.score_match_predictions(match)
             self._advance_bracket(match)
 
+        live_minute = self._live_minute_for_status(pm.status, pm.live_minute)
+        if match.live_minute != live_minute:
+            match.live_minute = live_minute
+            changed = True
+
         if changed:
             result.matches_updated += 1
+
+    def _clear_non_live_match_minute(
+        self,
+        tournament_id: UUID,
+        pm: ProviderMatch,
+        result: SyncResult,
+    ) -> None:
+        match = self.repo.get_match_by_provider_ref(tournament_id, pm.provider_ref)
+        if match is None:
+            match = self.repo.get_match_by_stage_position(
+                tournament_id, pm.stage, pm.bracket_position
+            )
+        if match is None or match.admin_override or match.live_minute is None:
+            return
+        match.live_minute = None
+        match.provider_last_synced_at = datetime.now(tz=UTC)
+        match.sync_source = "provider"
+        result.matches_updated += 1
 
     def _winner_team_id_for_provider_match(
         self,
@@ -499,3 +537,12 @@ class FixtureSyncService:
         if status == MatchStatus.COMPLETED:
             return MatchStatus.SCHEDULED
         return status
+
+    @staticmethod
+    def _live_minute_for_status(
+        status: MatchStatus,
+        live_minute: int | None,
+    ) -> int | None:
+        if status == MatchStatus.IN_PROGRESS:
+            return live_minute
+        return None

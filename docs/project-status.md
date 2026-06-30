@@ -45,6 +45,9 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - FE-009 tied prediction and admin correction UI alignment approved with comments by independent Reviewer gate.
 - REV-003 knockout data operations re-review approved with comments by independent Reviewer gate.
 - DEVOPS-005 free-plan Render blueprint cron cleanup approved by independent Reviewer gate.
+- UX-003 World Cup 2026 visual refresh specification completed.
+- BE-011 match display metadata and live-minute contract approved with comments by independent Reviewer gate.
+- FE-010 World Cup visual refresh and match state cards approved with comments by independent Reviewer gate.
 
 ## Verification Evidence
 
@@ -135,10 +138,30 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - DEVOPS-005 free-plan docs grep found the updated default-blueprint/free-plan guidance in deployment and infrastructure docs.
 - DEVOPS-005 scoped whitespace check: `git diff --check -- render.yaml docs/deployment.md docs/infrastructure.md docs/environment.md docs/project-status.md docs/backlog.md` passed with LF/CRLF warnings only.
 - DEVOPS-005 independent Reviewer gate: `APPROVED`.
+- BE-011/FE-010 focused backend checks:
+  `.\.venv\Scripts\python.exe -m pytest tests/providers/test_worldcup2026_adapter.py tests/services/test_fixture_sync_service.py tests/api/test_api_contract.py tests/db/test_migrations.py -q`
+  passed, 42 tests.
+- BE-011/FE-010 backend Ruff:
+  `.\.venv\Scripts\python.exe -m ruff check app tests scripts` passed.
+- BE-011/FE-010 full backend tests:
+  `.\.venv\Scripts\python.exe -m pytest -q` passed, 105 tests.
+- FE-010 focused frontend tests:
+  `npm.cmd test -- MatchPredictionCard AdminOperations` passed, 15 tests.
+- FE-010 full frontend tests: `npm.cmd test` passed, 46 tests.
+- FE-010 frontend lint: `npm.cmd run lint` passed.
+- FE-010 frontend typecheck: `npm.cmd run typecheck` passed after elevated
+  rerun for sandbox `EPERM` writing `.next/types/routes.d.ts`.
+- FE-010 frontend build: `npm.cmd run build` passed after elevated rerun.
+- BE-011/FE-010 scoped whitespace check: `git diff --check` passed with
+  LF/CRLF warnings only.
+- BE-011/FE-010 independent Reviewer gate: `APPROVED WITH COMMENTS`.
+  Non-blocking comments: future frontend render-level tests would provide
+  stronger confidence than source-string assertions; backlog/status polish and
+  database docs sync were addressed after review.
 
 ## In Progress
 
-- None.
+None.
 
 ## Changes Requested
 
@@ -171,7 +194,8 @@ None.
 
 ## Ready For Merge
 
-None. REV-002 follow-up work is approved and archived in the backlog.
+BE-011 and FE-010 are approved with comments and ready for merge after normal
+operator review. REV-002 follow-up work is approved and archived in the backlog.
 
 ## Production Status
 
@@ -210,11 +234,9 @@ Partially verified production deployment on Render + Neon.
 
 ## Next Recommended Task
 
-Redeploy backend hotfix, then decide provider results/scheduler path for
-DEPLOY-001.
+Apply migration `20260630_0004`, redeploy backend and frontend, then run a
+production smoke test for match cards with provider-loaded teams.
 
-Rationale: Automated checks now confirm Render, Neon, migrations, OpenAPI,
-health checks, CORS, authenticated pool loading, and admin UI routing. The
-remaining deployment closure is operational: deploy the provider-shape hotfix,
-then decide scheduled provider sync and how to handle provider result
-progression conflicts.
+Rationale: The app now has real provider fixture data in production, so the next
+highest-value follow-up is verifying the approved contract and visual refresh
+against Render + Neon.

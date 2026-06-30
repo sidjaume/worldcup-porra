@@ -84,6 +84,9 @@ export type Tournament = {
 export type TeamBrief = {
   id: ID;
   name: string;
+  short_name?: string | null;
+  fifa_code?: string | null;
+  flag_url?: string | null;
 };
 
 export type Team = TeamBrief & {
@@ -114,6 +117,7 @@ export type Match = {
   away_team: TeamBrief | null;
   scheduled_at: string;
   status: MatchStatus;
+  live_minute: number | null;
   home_score: number | null;
   away_score: number | null;
   winner_team_id: ID | null;

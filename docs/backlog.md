@@ -2,6 +2,10 @@
 
 Last updated: 2026-06-30
 
+## IN_PROGRESS
+
+None.
+
 ## PENDING_REVIEW
 
 None.
@@ -11,6 +15,62 @@ None.
 None.
 
 ## DONE
+
+### FE-010: World Cup Visual Refresh and Match State Cards
+
+- Owner: Frontend
+- Supporting agents: Product Designer, Backend, Reviewer
+- Status: DONE
+- Dependencies: UX-003 specification and BE-011 API contract.
+- Objective: Refresh the frontend visual system and prediction match cards so Round of 32 and later matches show flags, results, and live state clearly.
+- Acceptance criteria: App background is light but not pure white; branding uses a World Cup 2026-inspired palette/typographic direction without protected assets; match cards show flag/fallback, team names, scheduled/final/live status, score/result, live label and minute when present; mobile layout does not clip or overlap; color is not the only status signal.
+- Required tests: Focused frontend component/type tests plus lint/typecheck where practical.
+- Documentation updates: `docs/frontend.md`, `docs/backlog.md`, `docs/project-status.md`.
+- Risk: Medium
+- Completion evidence: Updated frontend API types, app shell, Tailwind tokens,
+  global background, shared card surface, and prediction match cards to show
+  flag/fallback display, final score state, scheduled `vs`, and green `Live`
+  label with minute when available. Focused frontend tests passed with 15
+  tests; full frontend tests passed with 46 tests; lint, typecheck, and
+  production build passed. Independent Reviewer gate decision: `APPROVED WITH
+  COMMENTS`; non-blocking comment recommends future render-level tests instead
+  of source-string assertions.
+
+### BE-011: Match Display Metadata and Live Minute Contract
+
+- Owner: Backend
+- Supporting agents: Architect, Frontend, Reviewer
+- Status: DONE
+- Dependencies: UX-003 visual/data needs; existing provider sync contract.
+- Objective: Expose the compact team metadata and live-minute match state needed for World Cup-style match cards.
+- Acceptance criteria: `TeamBrief` includes optional `short_name`, `fifa_code`, and `flag_url`; `MatchRead` includes nullable `live_minute`; provider normalization stores numeric live minutes only for in-progress matches; non-live matches clear/return `live_minute=null`; result fields remain unchanged.
+- Required tests: API serialization, provider normalization, fixture sync persistence/clearing, migration shape.
+- Documentation updates: `docs/api.md`, `docs/database.md`, `docs/backlog.md`, `docs/project-status.md`.
+- Risk: Medium
+- Completion evidence: Added nullable `matches.live_minute` migration
+  `20260630_0004`, exposed team metadata through `TeamBrief`, exposed
+  non-stale `MatchRead.live_minute`, parsed numeric provider live minutes only
+  for `in_progress` matches, and cleared non-live minutes during provider sync.
+  Focused backend tests passed with 42 tests; full backend tests passed with
+  105 tests; Ruff passed. Independent Reviewer gate decision: `APPROVED WITH
+  COMMENTS`; documentation synchronization comment was addressed in
+  `docs/database.md`.
+
+### UX-003: World Cup 2026 Visual Refresh Specification
+
+- Owner: Product Designer
+- Supporting agents: Frontend, Architect
+- Status: DONE
+- Dependencies: Current authenticated pool and prediction screens.
+- Objective: Define a World Cup 2026-inspired visual direction for the MVP without copying protected FIFA, Behance, mascot, logo, or texture assets.
+- Acceptance criteria: Palette, typography direction, page background, branding treatment, match-card layout, live/final/locked states, responsive behavior, and accessibility requirements are specified for frontend implementation.
+- Required tests: None for design-only work; FE-010 must verify responsive/accessibility-sensitive UI behavior where practical.
+- Documentation updates: Backlog and project status.
+- Risk: Medium
+- Completion evidence: Product Designer specified a light off-white canvas,
+  tri-host red/green/blue accents with sparing gold, condensed tournament-style
+  display typography, accessible badges, flag fallbacks, and compact responsive
+  match-card layout for scheduled, live, completed, locked, and TBD states.
 
 ### DEVOPS-005: Free-Plan Render Blueprint Cron Cleanup
 
