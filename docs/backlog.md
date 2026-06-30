@@ -461,8 +461,22 @@ None.
 
 - Owner: DevOps
 - Supporting agents: Backend, Frontend
-- Blocker: Requires external Render account, Neon database, Google OAuth client, and production secrets.
+- Blocker: Automated Render + Neon checks pass after redeploy and migrations,
+  and browser Google OAuth plus authenticated pool loading are verified. Closure
+  still requires provider result-sync/scheduler configuration decision.
 - Acceptance criteria: Render services deploy successfully, migrations run against Neon, health checks pass, and OAuth smoke test succeeds.
+- Current evidence: Backend and frontend health checks pass; backend OpenAPI
+  exposes the latest prediction/admin correction contract; Neon is at Alembic
+  `20260629_0003`; OAuth start redirects to Google with the production backend
+  callback; CORS preflight from the frontend origin passes; project owner
+  verified browser login and pool loading; admin UI route returns `200` after
+  frontend redeploy and project owner confirmed the sync screens are visible;
+  provider teams and fixtures were manually synced to Neon, creating 32
+  provider teams and updating 31 matches. Result sync remains blocked by
+  provider completed-match progression conflicts with seeded bracket links.
+  Provider adapter/sync hotfix for the current provider response shape is
+  approved by Reviewer after rework and must be deployed before using the
+  production admin sync button or automated scheduler.
 - Risk: High
 
 ## DEFERRED

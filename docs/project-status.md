@@ -150,7 +150,11 @@ None.
 
 ## Blocked
 
-- Production deployment is blocked until real Render, Neon, and Google OAuth secrets/configuration exist outside the repository.
+- DEPLOY-001 production deployment closure is blocked until the provider
+  scheduler configuration/decision is verified. Automated production
+  checks now pass for Render health, CORS, OpenAPI contract, Neon connectivity,
+  and Alembic version; browser Google OAuth and authenticated pool loading have
+  also been verified, and the admin UI route loads after frontend redeploy.
 - Local Google OAuth testing is blocked unless Google OAuth credentials are configured. The local backend-owned callback is documented consistently as `http://localhost:8000/api/v1/auth/google/callback`.
 - Provider-backed sync execution for DATA-EPIC-001 still depends on the project owner deciding provider budget/licensing constraints and supplying account credentials.
 
@@ -171,12 +175,46 @@ None. REV-002 follow-up work is approved and archived in the backlog.
 
 ## Production Status
 
-Not deployed to production. Local Docker deployment is healthy.
+Partially verified production deployment on Render + Neon.
+
+- Backend health: `https://worldcup-porra.onrender.com/health` returned
+  `{"status":"ok","database":"ok"}`.
+- Frontend health: `https://worldcup-porra-p2zv.onrender.com/health` returned
+  `{"status":"ok"}`.
+- Frontend root returned `200` HTML.
+- Backend OpenAPI returned `200` and includes `predicted_winner_team_id`,
+  `/api/v1/admin/matches/{match_id}/teams`, and
+  `/api/v1/admin/matches/{match_id}/status`.
+- Google OAuth start redirects to Google with the production backend callback.
+- CORS preflight from the frontend origin to the backend passed.
+- Neon Alembic version is `20260629_0003`; production data includes 1
+  tournament, 64 teams, 31 matches, 3 pools, and 2 users. The 31 matches are
+  synced from the provider; 32 provider teams are loaded and 32 old seed teams
+  are now unreferenced.
+- Browser login with Google and authenticated pool loading were verified by
+  the project owner.
+- Admin UI route
+  `https://worldcup-porra-p2zv.onrender.com/admin/tournaments/22c110a4-5db5-4a3d-afaa-3a098da7c3c2`
+  returned `200` after frontend redeploy; project owner confirmed the sync
+  screens are visible.
+- Provider teams and fixtures were synced manually against Neon: `teams`
+  created 32 provider teams and `matches` updated 31 matches with provider
+  kickoff/team data. Result sync was not enabled because current provider
+  completed-match progression conflicts with the seeded bracket links and must
+  remain fail-closed until reviewed.
+- Provider adapter/sync hotfix for the current provider response shape is
+  approved by Reviewer after rework. Full backend checks passed with 100 tests
+  and Ruff. This backend patch must be deployed before using the production
+  admin sync button or an automated scheduler.
+- Remaining production smoke: provider scheduler configuration/decision.
 
 ## Next Recommended Task
 
-Resolve external production deployment blockers for DEPLOY-001.
+Redeploy backend hotfix, then decide provider results/scheduler path for
+DEPLOY-001.
 
-Rationale: All unblocked DATA-EPIC remediation and review work is approved.
-Production deployment remains blocked by external Render, Neon, Google OAuth,
-provider, and secret configuration.
+Rationale: Automated checks now confirm Render, Neon, migrations, OpenAPI,
+health checks, CORS, authenticated pool loading, and admin UI routing. The
+remaining deployment closure is operational: deploy the provider-shape hotfix,
+then decide scheduled provider sync and how to handle provider result
+progression conflicts.

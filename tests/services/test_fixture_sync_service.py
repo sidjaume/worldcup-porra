@@ -78,6 +78,154 @@ def test_import_teams_and_matches_is_idempotent(db_session: Session) -> None:
     assert db_session.scalar(select(func.count(Match.id))) == 1
 
 
+def test_import_matches_clears_provider_tbd_slots(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Clear TBD Slots")
+    seeded_home = _create_team(db_session, tournament, "Seed Home", "seed-home")
+    seeded_away = _create_team(db_session, tournament, "Seed Away", "seed-away")
+    provider_home = _create_team(db_session, tournament, "Mexico", "1")
+    match = _create_match(db_session, tournament, seeded_home, seeded_away)
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="79",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=datetime(2026, 6, 30, 19, tzinfo=UTC),
+                status=MatchStatus.SCHEDULED,
+                home_team_provider_ref="1",
+                away_team_provider_ref=None,
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).import_matches(
+        tournament.id,
+        adapter,
+    )
+    db_session.refresh(match)
+
+    assert result.errors == []
+    assert match.home_team_id == provider_home.id
+    assert match.away_team_id is None
+
+
+def test_import_matches_leaves_completed_status_for_result_sync(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Completed Fixture Import")
+    home = _create_team(db_session, tournament, "Spain", "esp")
+    away = _create_team(db_session, tournament, "Portugal", "por")
+    match = _create_match(db_session, tournament, home, away)
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=match.scheduled_at,
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).import_matches(
+        tournament.id,
+        adapter,
+    )
+    db_session.refresh(match)
+
+    assert result.errors == []
+    assert match.status == MatchStatus.SCHEDULED
+    assert match.home_score is None
+    assert match.away_score is None
+    assert match.winner_team_id is None
+
+
+def test_import_matches_creates_completed_provider_fixture_as_scheduled(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="New Completed Fixture Import")
+    _create_team(db_session, tournament, "Spain", "esp")
+    _create_team(db_session, tournament, "Portugal", "por")
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=datetime(2026, 6, 28, 18, tzinfo=UTC),
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).import_matches(
+        tournament.id,
+        adapter,
+    )
+    match = db_session.scalar(select(Match).where(Match.provider_ref == "m73"))
+
+    assert result.errors == []
+    assert match is not None
+    assert match.status == MatchStatus.SCHEDULED
+    assert match.home_score is None
+    assert match.away_score is None
+    assert match.winner_team_id is None
+
+
+def test_import_matches_fails_closed_on_unknown_provider_team_ref(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Unknown Provider Team")
+    seeded_home = _create_team(db_session, tournament, "Seed Home", "seed-home")
+    seeded_away = _create_team(db_session, tournament, "Seed Away", "seed-away")
+    match = _create_match(db_session, tournament, seeded_home, seeded_away)
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="79",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=datetime(2026, 6, 30, 19, tzinfo=UTC),
+                status=MatchStatus.SCHEDULED,
+                home_team_provider_ref="missing-team",
+                away_team_provider_ref=None,
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).import_matches(
+        tournament.id,
+        adapter,
+    )
+    db_session.refresh(match)
+
+    assert result.errors
+    assert "missing-team" in result.errors[0]
+    assert match.home_team_id == seeded_home.id
+    assert match.away_team_id == seeded_away.id
+
+
 def test_completed_tied_result_scores_and_advances_idempotently(
     db_session: Session,
 ) -> None:

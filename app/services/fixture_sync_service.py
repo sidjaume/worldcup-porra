@@ -251,6 +251,7 @@ class FixtureSyncService:
 
         home_team_id = self._resolve_team_id(tournament_id, pm.home_team_provider_ref)
         away_team_id = self._resolve_team_id(tournament_id, pm.away_team_provider_ref)
+        fixture_status = self._fixture_import_status(pm.status)
 
         if existing is None:
             match = Match(
@@ -258,7 +259,7 @@ class FixtureSyncService:
                 stage=pm.stage,
                 bracket_position=pm.bracket_position,
                 scheduled_at=pm.scheduled_at,
-                status=pm.status,
+                status=fixture_status,
                 home_team_id=home_team_id,
                 away_team_id=away_team_id,
                 provider_ref=pm.provider_ref,
@@ -287,17 +288,14 @@ class FixtureSyncService:
             if existing.scheduled_at != pm.scheduled_at:
                 existing.scheduled_at = pm.scheduled_at
                 changed = True
-            if home_team_id and existing.home_team_id != home_team_id:
+            if existing.home_team_id != home_team_id:
                 existing.home_team_id = home_team_id
                 changed = True
-            if away_team_id and existing.away_team_id != away_team_id:
+            if existing.away_team_id != away_team_id:
                 existing.away_team_id = away_team_id
                 changed = True
-            if (
-                existing.status != pm.status
-                and existing.status != MatchStatus.COMPLETED
-            ):
-                existing.status = pm.status
+            if existing.status != fixture_status and existing.status != MatchStatus.COMPLETED:
+                existing.status = fixture_status
                 changed = True
 
             existing.provider_last_synced_at = datetime.now(tz=UTC)
@@ -490,4 +488,14 @@ class FixtureSyncService:
         if provider_ref is None:
             return None
         team = self.repo.get_team_by_provider_ref(tournament_id, provider_ref)
-        return team.id if team else None
+        if team is None:
+            raise ValidationError(
+                f"Provider team reference {provider_ref!r} is not loaded."
+            )
+        return team.id
+
+    @staticmethod
+    def _fixture_import_status(status: MatchStatus) -> MatchStatus:
+        if status == MatchStatus.COMPLETED:
+            return MatchStatus.SCHEDULED
+        return status

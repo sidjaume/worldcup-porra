@@ -68,6 +68,7 @@ _STATUS_MAP: dict[str, MatchStatus] = {
     "upcoming": MatchStatus.SCHEDULED,
     "scheduled": MatchStatus.SCHEDULED,
     "tbd": MatchStatus.SCHEDULED,
+    "notstarted": MatchStatus.SCHEDULED,
     "not started": MatchStatus.SCHEDULED,
     "live": MatchStatus.IN_PROGRESS,
     "in_progress": MatchStatus.IN_PROGRESS,
@@ -165,11 +166,12 @@ class WorldCup2026Adapter:
             with urllib.request.urlopen(req, timeout=self._timeout) as response:
                 body = response.read().decode("utf-8")
                 data = json.loads(body)
-                # Provider may return {"data": [...]} or directly [...]
+                # Provider may return {"data": [...]}, endpoint-specific keys,
+                # or directly [...]
                 if isinstance(data, list):
                     return data
                 if isinstance(data, dict):
-                    for key in ("data", "matches", "teams", "results"):
+                    for key in ("data", "games", "matches", "teams", "results"):
                         if isinstance(data.get(key), list):
                             return data[key]
                 raise ProviderError(
@@ -220,12 +222,23 @@ class WorldCup2026Adapter:
                 "scheduled_at",
                 "kickoff",
                 "kickoff_at",
+                "local_date",
             )
         )
         if scheduled_at is None:
             raise ProviderError(f"Provider match {ref} has no parseable date.")
 
-        status_raw = self._first_present(item, "status", "match_status")
+        status_raw = self._first_present(
+            item, "status", "match_status", "time_elapsed"
+        )
+        if status_raw is None:
+            finished_raw = self._first_present(item, "finished")
+            if finished_raw is not None:
+                status_raw = (
+                    "finished"
+                    if str(finished_raw).lower().strip() == "true"
+                    else "notstarted"
+                )
         if status_raw is None:
             raise ProviderError(f"Provider match {ref} is missing status.")
         status_key = str(status_raw).lower().strip()
@@ -260,6 +273,16 @@ class WorldCup2026Adapter:
                     f"Provider match {ref} is completed but missing scores."
                 )
             winner_ref = self._extract_winner_ref(item)
+            if winner_ref is None and home_score != away_score:
+                winner_ref = (
+                    home_team_ref if home_score > away_score else away_team_ref
+                )
+            if winner_ref is None and home_score == away_score:
+                winner_ref = self._winner_from_penalties(
+                    item=item,
+                    home_team_ref=home_team_ref,
+                    away_team_ref=away_team_ref,
+                )
             if winner_ref is None:
                 raise ProviderError(
                     f"Provider match {ref} is completed but missing winner."
@@ -308,6 +331,7 @@ class WorldCup2026Adapter:
             "%Y-%m-%dT%H:%M:%S%z",
             "%Y-%m-%dT%H:%M:%S",
             "%Y-%m-%d %H:%M:%S",
+            "%m/%d/%Y %H:%M",
             "%Y-%m-%d",
         ):
             try:
@@ -334,20 +358,24 @@ class WorldCup2026Adapter:
         nested = item.get(f"{side}_team")
         if isinstance(nested, dict):
             ref = WorldCup2026Adapter._first_present(nested, "id", "team_id")
-            if ref is not None:
-                return str(ref)
+            normalised = WorldCup2026Adapter._normalise_ref(ref)
+            if normalised is not None:
+                return normalised
         # Flat field: home_team_id, away_team_id
         flat = item.get(f"{side}_team_id")
-        if flat is not None:
-            return str(flat)
+        normalised_flat = WorldCup2026Adapter._normalise_ref(flat)
+        if normalised_flat is not None:
+            return normalised_flat
         camel = item.get(f"{side}Team")
         if isinstance(camel, dict):
             ref = WorldCup2026Adapter._first_present(camel, "id", "_id", "team_id")
-            if ref is not None:
-                return str(ref)
+            normalised = WorldCup2026Adapter._normalise_ref(ref)
+            if normalised is not None:
+                return normalised
         camel_id = item.get(f"{side}TeamId")
-        if camel_id is not None:
-            return str(camel_id)
+        normalised_camel_id = WorldCup2026Adapter._normalise_ref(camel_id)
+        if normalised_camel_id is not None:
+            return normalised_camel_id
         return None
 
     @staticmethod
@@ -357,14 +385,50 @@ class WorldCup2026Adapter:
         winner = item.get("winner")
         if isinstance(winner, dict):
             ref = WorldCup2026Adapter._first_present(winner, "id", "team_id")
-            if ref is not None:
-                return str(ref)
+            normalised = WorldCup2026Adapter._normalise_ref(ref)
+            if normalised is not None:
+                return normalised
         # Flat field
         flat = WorldCup2026Adapter._first_present(
             item, "winner_team_id", "winner_id"
         )
-        if flat is not None:
-            return str(flat)
+        normalised_flat = WorldCup2026Adapter._normalise_ref(flat)
+        if normalised_flat is not None:
+            return normalised_flat
+        return None
+
+    @staticmethod
+    def _normalise_ref(value: Any) -> str | None:
+        if value is None:
+            return None
+        raw = str(value).strip()
+        if raw in ("", "0"):
+            return None
+        return raw
+
+    @staticmethod
+    def _winner_from_penalties(
+        *,
+        item: dict[str, Any],
+        home_team_ref: str | None,
+        away_team_ref: str | None,
+    ) -> str | None:
+        home_penalties = WorldCup2026Adapter._safe_int(
+            WorldCup2026Adapter._first_present(
+                item, "home_penalty_score", "home_penalties"
+            )
+        )
+        away_penalties = WorldCup2026Adapter._safe_int(
+            WorldCup2026Adapter._first_present(
+                item, "away_penalty_score", "away_penalties"
+            )
+        )
+        if home_penalties is None or away_penalties is None:
+            return None
+        if home_penalties > away_penalties:
+            return home_team_ref
+        if away_penalties > home_penalties:
+            return away_team_ref
         return None
 
     @staticmethod

@@ -10,7 +10,12 @@ class PayloadAdapter(WorldCup2026Adapter):
         self.payloads = payloads
 
     def _get(self, path: str):
-        return self.payloads[path]
+        payload = self.payloads[path]
+        if isinstance(payload, dict):
+            for key in ("data", "games", "matches", "teams", "results"):
+                if isinstance(payload.get(key), list):
+                    return payload[key]
+        return payload
 
 
 def test_adapter_filters_knockout_matches_and_derives_stage_positions() -> None:
@@ -68,6 +73,93 @@ def test_adapter_filters_knockout_matches_and_derives_stage_positions() -> None:
         "jpn",
         "por",
     }
+
+
+def test_adapter_accepts_current_provider_wrappers_and_field_names() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/teams": {
+                "teams": [
+                    {
+                        "id": "1",
+                        "name_en": "Mexico",
+                        "fifa_code": "MEX",
+                        "flag": "https://flagcdn.com/w80/mx.png",
+                    },
+                    {
+                        "id": "20",
+                        "name_en": "Ecuador",
+                        "fifa_code": "ECU",
+                    },
+                    {
+                        "id": "unused",
+                        "name_en": "Unused Team",
+                        "fifa_code": "ZZZ",
+                    },
+                ]
+            },
+            "/games": {
+                "games": [
+                    {
+                        "id": "79",
+                        "type": "r32",
+                        "local_date": "06/30/2026 19:00",
+                        "time_elapsed": "notstarted",
+                        "home_team_id": "1",
+                        "away_team_id": "20",
+                    },
+                    {
+                        "id": "89",
+                        "type": "r16",
+                        "local_date": "07/04/2026 17:00",
+                        "finished": "FALSE",
+                        "home_team_id": "14",
+                        "away_team_id": "0",
+                    },
+                    {
+                        "id": "101",
+                        "type": "third",
+                        "local_date": "07/18/2026 17:00",
+                        "time_elapsed": "notstarted",
+                    },
+                ]
+            },
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+    teams = adapter.fetch_teams(2026)
+
+    assert [match.provider_ref for match in matches] == ["79", "89"]
+    assert matches[0].stage == TournamentStage.ROUND_OF_32
+    assert matches[0].status == MatchStatus.SCHEDULED
+    assert matches[0].scheduled_at.isoformat() == "2026-06-30T19:00:00+00:00"
+    assert matches[1].away_team_provider_ref is None
+    assert {team.provider_ref for team in teams} == {"1", "20"}
+    assert teams[0].name == "Mexico"
+    assert teams[0].flag_url == "https://flagcdn.com/w80/mx.png"
+
+
+def test_adapter_treats_nested_zero_team_refs_as_tbd() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                {
+                    "id": "99",
+                    "type": "qf",
+                    "local_date": "07/11/2026 17:00",
+                    "time_elapsed": "notstarted",
+                    "home_team": {"id": "0"},
+                    "awayTeam": {"id": 0},
+                }
+            ]
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].home_team_provider_ref is None
+    assert matches[0].away_team_provider_ref is None
 
 
 def test_adapter_raises_on_malformed_team_record() -> None:
@@ -167,7 +259,7 @@ def test_adapter_raises_on_completed_match_missing_winner() -> None:
         {
             "/games": [
                 _completed_match(
-                    score={"home_score": 2, "away_score": 1},
+                    score={"home_score": 1, "away_score": 1},
                     winner_team_id=None,
                 )
             ],
@@ -176,6 +268,55 @@ def test_adapter_raises_on_completed_match_missing_winner() -> None:
 
     with pytest.raises(ProviderError, match="missing winner"):
         adapter.fetch_matches(2026)
+
+
+def test_adapter_derives_missing_completed_winner_from_decisive_score() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 0, "away_score": 2},
+                    winner_team_id=None,
+                )
+            ],
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].winner_provider_ref == "por"
+
+
+def test_adapter_still_requires_winner_for_completed_tie() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 1, "away_score": 1},
+                    winner_team_id=None,
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(ProviderError, match="missing winner"):
+        adapter.fetch_matches(2026)
+
+
+def test_adapter_uses_penalties_only_for_tied_completed_winner() -> None:
+    payload = _completed_match(
+        score={"home_score": 1, "away_score": 1},
+        winner_team_id=None,
+    )
+    payload["home_penalty_score"] = "3"
+    payload["away_penalty_score"] = "4"
+    adapter = PayloadAdapter({"/games": [payload]})
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].home_score == 1
+    assert matches[0].away_score == 1
+    assert matches[0].winner_provider_ref == "por"
 
 
 def test_adapter_raises_on_completed_match_missing_score() -> None:
