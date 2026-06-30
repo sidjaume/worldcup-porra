@@ -38,6 +38,10 @@ Required Render environment variables:
 - `TOURNAMENT_PROVIDER_BASE_URL`
 - `TOURNAMENT_PROVIDER_API_KEY` if the configured provider requires it
 - `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS`
+- `CRON_SECRET` if using an external HTTP scheduler
+- `TOURNAMENT_SYNC_TOURNAMENT_ID` if using an external HTTP scheduler
+- `TOURNAMENT_SYNC_YEAR` if using an external HTTP scheduler
+- `TOURNAMENT_SYNC_MODE` if using an external HTTP scheduler
 
 Use Render secret/synced environment values for every secret. Do not commit
 production values to the repository.
@@ -78,6 +82,22 @@ python -m scripts.sync_knockout_fixtures "$TOURNAMENT_SYNC_TOURNAMENT_ID" --year
 
 Admin-triggered sync and manual corrections remain available in the app as
 fallbacks.
+
+An external HTTP scheduler can also keep the Render backend as the only system
+that touches Neon. Configure `CRON_SECRET`, `TOURNAMENT_SYNC_TOURNAMENT_ID`,
+`TOURNAMENT_SYNC_YEAR`, and `TOURNAMENT_SYNC_MODE` on the backend, then have the
+scheduler call:
+
+```sh
+curl -X POST "https://<backend-render-host>/api/v1/ops/sync" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+This request wakes a sleeping Render free web service and asks the backend to
+run the configured sync. It avoids giving the scheduler direct database access.
+For the current provider-result conflict, prefer `TOURNAMENT_SYNC_MODE=matches`
+after provider teams are loaded, until result progression is intentionally
+enabled.
 
 Render cron is an optional convenience for a later paid/eligible Render plan.
 When that path is intentionally adopted, add a separate Render cron service that

@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Annotated, Literal
+from uuid import UUID
 from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
@@ -31,6 +32,10 @@ class Settings(BaseSettings):
     tournament_provider_base_url: str = "https://worldcup26.ir/get"
     tournament_provider_api_key: str = ""
     tournament_provider_timeout_seconds: int = 10
+    cron_secret: str = ""
+    tournament_sync_tournament_id: UUID | None = None
+    tournament_sync_year: int = 2026
+    tournament_sync_mode: Literal["all", "teams", "matches", "results"] = "all"
     log_level: str = "INFO"
 
     @field_validator("database_url")

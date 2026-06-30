@@ -164,6 +164,19 @@ def test_admin_match_correction_endpoints_match_contract() -> None:
     }
 
 
+def test_ops_sync_endpoint_matches_contract() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    paths = response.json()["paths"]
+    ops_sync = paths["/api/v1/ops/sync"]["post"]
+
+    assert ops_sync["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/SyncResult"
+    }
+    assert "requestBody" not in ops_sync
+
+
 def test_admin_match_correction_request_schemas_match_contract() -> None:
     response = TestClient(app).get("/openapi.json")
 

@@ -48,6 +48,7 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - UX-003 World Cup 2026 visual refresh specification completed.
 - BE-011 match display metadata and live-minute contract approved with comments by independent Reviewer gate.
 - FE-010 World Cup visual refresh and match state cards approved with comments by independent Reviewer gate.
+- BE-012 secure external scheduler sync endpoint approved with comments by independent Reviewer gate.
 
 ## Verification Evidence
 
@@ -158,6 +159,20 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
   Non-blocking comments: future frontend render-level tests would provide
   stronger confidence than source-string assertions; backlog/status polish and
   database docs sync were addressed after review.
+- BE-012 focused backend checks:
+  `.\.venv\Scripts\python.exe -m pytest tests/api/test_ops_sync.py tests/api/test_api_contract.py tests/config/test_settings.py -q`
+  passed, 21 tests.
+- BE-012 focused Ruff:
+  `.\.venv\Scripts\python.exe -m ruff check app/api/routers/ops.py app/api/main.py app/config/settings.py tests/api/test_ops_sync.py tests/api/test_api_contract.py`
+  passed.
+- BE-012 full backend tests: `.\.venv\Scripts\python.exe -m pytest -q`
+  passed, 111 tests.
+- BE-012 full Ruff: `.\.venv\Scripts\python.exe -m ruff check .` passed.
+- BE-012 whitespace check: `git diff --check` passed with LF/CRLF warnings
+  only.
+- BE-012 independent Reviewer gate: `APPROVED WITH COMMENTS`. The only comment
+  was documentation wording for `TOURNAMENT_SYNC_MODE=matches`; it was corrected
+  after review.
 
 ## In Progress
 
@@ -195,7 +210,9 @@ None.
 ## Ready For Merge
 
 BE-011 and FE-010 are approved with comments and ready for merge after normal
-operator review. REV-002 follow-up work is approved and archived in the backlog.
+operator review. BE-012 is approved with comments and ready for merge after
+normal operator review. REV-002 follow-up work is approved and archived in the
+backlog.
 
 ## Production Status
 
@@ -211,7 +228,7 @@ Partially verified production deployment on Render + Neon.
   `/api/v1/admin/matches/{match_id}/status`.
 - Google OAuth start redirects to Google with the production backend callback.
 - CORS preflight from the frontend origin to the backend passed.
-- Neon Alembic version is `20260629_0003`; production data includes 1
+- Neon Alembic version is `20260630_0004`; production data includes 1
   tournament, 64 teams, 31 matches, 3 pools, and 2 users. The 31 matches are
   synced from the provider; 32 provider teams are loaded and 32 old seed teams
   are now unreferenced.
@@ -234,9 +251,10 @@ Partially verified production deployment on Render + Neon.
 
 ## Next Recommended Task
 
-Apply migration `20260630_0004`, redeploy backend and frontend, then run a
-production smoke test for match cards with provider-loaded teams.
+Deploy the backend/frontend approved changes, then configure an external HTTP
+scheduler with `CRON_SECRET`, `TOURNAMENT_SYNC_TOURNAMENT_ID`,
+`TOURNAMENT_SYNC_YEAR=2026`, and an initial `TOURNAMENT_SYNC_MODE=matches`.
 
 Rationale: The app now has real provider fixture data in production, so the next
-highest-value follow-up is verifying the approved contract and visual refresh
-against Render + Neon.
+highest-value follow-up is making sync automatic without giving the scheduler
+direct database credentials.

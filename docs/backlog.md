@@ -16,6 +16,27 @@ None.
 
 ## DONE
 
+### BE-012: Secure External Scheduler Sync Endpoint
+
+- Owner: Backend
+- Supporting agents: DevOps, Reviewer
+- Status: DONE
+- Dependencies: BE-005 provider sync service, DEVOPS-004 free-plan sync runbook, DEPLOY-001 production deployment path.
+- Objective: Expose a machine-to-machine backend endpoint that lets an external HTTP scheduler wake Render and run provider sync without giving the scheduler direct Neon access.
+- Acceptance criteria: `POST /api/v1/ops/sync` requires `Authorization: Bearer <CRON_SECRET>`; missing or invalid cron credentials return the standard unauthorized error; backend reads `TOURNAMENT_SYNC_TOURNAMENT_ID`, `TOURNAMENT_SYNC_YEAR`, and `TOURNAMENT_SYNC_MODE`; sync reuses existing provider normalization/persistence services; phase errors roll back and return errors; API/environment/deployment docs are updated without secrets.
+- Required tests: Endpoint authorization/configuration tests, sync-mode transaction tests, OpenAPI contract test, settings/config tests, backend lint.
+- Documentation updates: `.env.example`, `docs/api.md`, `docs/environment.md`, `docs/deployment.md`, `docs/backlog.md`, `docs/project-status.md`.
+- Risk: Medium
+- Completion evidence: Added `/api/v1/ops/sync`, protected by
+  `Authorization: Bearer <CRON_SECRET>`, and backend settings for
+  `CRON_SECRET`, `TOURNAMENT_SYNC_TOURNAMENT_ID`, `TOURNAMENT_SYNC_YEAR`, and
+  `TOURNAMENT_SYNC_MODE`. The endpoint reuses `WorldCup2026Adapter` and
+  `FixtureSyncService`, commits successful configured phases once, and rolls
+  back on phase errors. Focused tests passed with 21 tests; full backend tests
+  passed with 111 tests; Ruff and whitespace checks passed. Independent
+  Reviewer gate decision: `APPROVED WITH COMMENTS`; documentation wording for
+  `matches` mode was corrected after review.
+
 ### FE-010: World Cup Visual Refresh and Match State Cards
 
 - Owner: Frontend

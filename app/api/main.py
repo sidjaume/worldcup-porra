@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.errors import register_error_handlers
-from app.api.routers import admin, auth, pools, predictions, rankings, tournaments, users
+from app.api.routers import admin, auth, ops, pools, predictions, rankings, tournaments, users
 from app.config.settings import get_settings
 from app.db.session import engine
 
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(predictions.router, prefix="/api/v1")
     app.include_router(rankings.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
+    app.include_router(ops.router, prefix="/api/v1")
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -40,4 +41,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

@@ -40,6 +40,7 @@ The repository currently implements these route groups under `/api/v1`:
 - `/pools/{pool_id}/rankings`: aggregate rankings.
 - `/admin`: match creation, match completion, kickoff correction, provider sync,
   and rescoring.
+- `/ops`: machine-to-machine operational endpoints for trusted schedulers.
 - `/health`: unauthenticated process/database health endpoint outside `/api/v1`.
 
 The Next.js frontend API client currently calls the documented `/api/v1`
@@ -782,6 +783,51 @@ Request:
 {
   "year": 2026
 }
+```
+
+Response:
+
+```json
+{
+  "teams_created": 0,
+  "teams_updated": 0,
+  "matches_created": 0,
+  "matches_updated": 0,
+  "errors": []
+}
+```
+
+## Operations Endpoints
+
+Operations endpoints are for machine-to-machine automation and must not be used
+by the browser frontend.
+
+### POST `/api/v1/ops/sync`
+
+Runs provider sync from a trusted external scheduler. This endpoint is protected
+by `Authorization: Bearer <CRON_SECRET>` and does not use user OAuth tokens.
+
+The backend reads the target tournament and mode from environment variables:
+
+- `TOURNAMENT_SYNC_TOURNAMENT_ID`
+- `TOURNAMENT_SYNC_YEAR`
+- `TOURNAMENT_SYNC_MODE`
+
+Supported modes are `all`, `teams`, `matches`, and `results`. The endpoint uses
+the same provider normalization and persistence services as the admin/manual
+sync path. Sync phases run in one transaction for the configured mode; if a
+phase reports errors, the endpoint rolls back and returns the errors.
+
+For the current production provider state, operators may set
+`TOURNAMENT_SYNC_MODE=matches` to refresh fixtures, kickoff times, team slots,
+and live minutes without enabling result progression until provider result
+conflicts are resolved. Provider teams must already be loaded; run `teams` or
+`all` first when new provider teams need to be imported.
+
+Headers:
+
+```text
+Authorization: Bearer <CRON_SECRET>
 ```
 
 Response:
