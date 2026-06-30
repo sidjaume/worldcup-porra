@@ -13,6 +13,7 @@ from app.models.team import Team
 from app.models.tournament import Tournament
 from app.models.user import User
 from app.providers.base import ProviderMatch, ProviderTeam
+from app.providers.worldcup2026 import ProviderError
 from app.services.fixture_sync_service import FixtureSyncService
 
 
@@ -34,6 +35,11 @@ class StaticAdapter:
 
     def fetch_matches(self, tournament_year: int) -> list[ProviderMatch]:
         return self._matches
+
+
+class FailingMatchFetchAdapter(StaticAdapter):
+    def fetch_matches(self, tournament_year: int) -> list[ProviderMatch]:
+        raise ProviderError("Provider match m73 has unknown status 'abandoned'.")
 
 
 def test_import_teams_and_matches_is_idempotent(db_session: Session) -> None:
@@ -121,6 +127,156 @@ def test_completed_tied_result_scores_and_advances_idempotently(
     assert db_session.scalar(select(func.count(PredictionScore.id))) == 1
 
 
+def test_provider_progression_skips_downstream_admin_override(
+    db_session: Session,
+) -> None:
+    context = _create_scoring_context(db_session)
+    manual_team = _create_team(db_session, context.tournament, "France", "fra")
+    context.next_match.home_team = manual_team
+    context.next_match.sync_source = "admin"
+    context.next_match.admin_override = True
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=context.match.scheduled_at,
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).sync_results(
+        context.tournament.id,
+        adapter,
+    )
+    db_session.refresh(context.match)
+    db_session.refresh(context.next_match)
+
+    assert result.errors == []
+    assert context.match.status == MatchStatus.COMPLETED
+    assert context.next_match.home_team_id == manual_team.id
+    assert context.next_match.sync_source == "admin"
+    assert context.next_match.admin_override is True
+
+
+def test_provider_progression_allows_empty_downstream_slot(
+    db_session: Session,
+) -> None:
+    context = _create_scoring_context(db_session)
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=context.match.scheduled_at,
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).sync_results(
+        context.tournament.id,
+        adapter,
+    )
+    db_session.refresh(context.next_match)
+
+    assert result.errors == []
+    assert context.next_match.home_team_id == context.home_team.id
+    assert context.next_match.admin_override is False
+
+
+def test_provider_progression_allows_same_team_downstream_slot(
+    db_session: Session,
+) -> None:
+    context = _create_scoring_context(db_session)
+    context.next_match.home_team = context.home_team
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=context.match.scheduled_at,
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).sync_results(
+        context.tournament.id,
+        adapter,
+    )
+    db_session.refresh(context.next_match)
+
+    assert result.errors == []
+    assert context.next_match.home_team_id == context.home_team.id
+    assert context.next_match.admin_override is False
+
+
+def test_provider_progression_reports_conflict_without_overwrite(
+    db_session: Session,
+) -> None:
+    context = _create_scoring_context(db_session)
+    conflicting_team = _create_team(db_session, context.tournament, "France", "fra")
+    context.next_match.home_team = conflicting_team
+    db_session.commit()
+    adapter = StaticAdapter(
+        teams=[],
+        matches=[
+            ProviderMatch(
+                provider_ref="m73",
+                stage=TournamentStage.ROUND_OF_32,
+                bracket_position=1,
+                scheduled_at=context.match.scheduled_at,
+                status=MatchStatus.COMPLETED,
+                home_team_provider_ref="esp",
+                away_team_provider_ref="por",
+                home_score=2,
+                away_score=1,
+                winner_provider_ref="esp",
+            )
+        ],
+    )
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).sync_results(
+        context.tournament.id,
+        adapter,
+    )
+    db_session.refresh(context.match)
+    db_session.refresh(context.next_match)
+
+    assert result.errors
+    assert "would overwrite a populated home slot" in result.errors[0]
+    assert context.match.status == MatchStatus.SCHEDULED
+    assert context.match.home_score is None
+    assert context.match.away_score is None
+    assert context.match.winner_team_id is None
+    assert context.next_match.home_team_id == conflicting_team.id
+
+
 def test_invalid_completed_provider_result_does_not_dirty_match(
     db_session: Session,
 ) -> None:
@@ -154,6 +310,30 @@ def test_invalid_completed_provider_result_does_not_dirty_match(
     db_session.refresh(match)
 
     assert result.errors
+    assert match.status == MatchStatus.SCHEDULED
+    assert match.home_score is None
+    assert match.away_score is None
+    assert match.winner_team_id is None
+
+
+def test_provider_normalization_error_does_not_dirty_match(
+    db_session: Session,
+) -> None:
+    tournament = _create_tournament(db_session, name="Provider Normalization Error")
+    home = _create_team(db_session, tournament, "Spain", "esp")
+    away = _create_team(db_session, tournament, "Portugal", "por")
+    match = _create_match(db_session, tournament, home, away)
+    db_session.commit()
+    adapter = FailingMatchFetchAdapter(teams=[], matches=[])
+
+    result = FixtureSyncService(db_session, Settings(_env_file=None)).sync_results(
+        tournament.id,
+        adapter,
+    )
+    db_session.refresh(match)
+
+    assert result.errors
+    assert "unknown status" in result.errors[0]
     assert match.status == MatchStatus.SCHEDULED
     assert match.home_score is None
     assert match.away_score is None
@@ -209,12 +389,14 @@ class ScoringContext:
         *,
         tournament: Tournament,
         home_team: Team,
+        away_team: Team,
         match: Match,
         next_match: Match,
         prediction: Prediction,
     ) -> None:
         self.tournament = tournament
         self.home_team = home_team
+        self.away_team = away_team
         self.match = match
         self.next_match = next_match
         self.prediction = prediction
@@ -272,6 +454,7 @@ def _create_scoring_context(db_session: Session) -> ScoringContext:
     return ScoringContext(
         tournament=tournament,
         home_team=home,
+        away_team=away,
         match=match,
         next_match=next_match,
         prediction=prediction,

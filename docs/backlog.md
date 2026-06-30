@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 ## PENDING_REVIEW
 
@@ -8,27 +8,177 @@ None.
 
 ## PLANNED
 
-### UX-002: Admin Data Correction and Sync Visibility Flow
+None.
 
-- Owner: Product Designer
-- Supporting agents: Frontend, Backend
-- Status: PLANNED
-- Dependencies: ARCH-003 internal data/status model; BE-005 admin API shape.
-- Objective: Specify the minimal admin experience for viewing sync status and correcting teams, kickoff times, match status, and final results.
-- Context: The fallback UI is operationally critical during the tournament. It should be fast, clear, and hard to misuse.
-- Relevant files: `docs/frontend.md`, `frontend/app/`, `frontend/components/`.
-- Expected deliverables: Admin user flow; screen/content specification; error/confirmation states; accessibility requirements; API data needs for frontend.
-- Acceptance criteria: Admins can identify stale/failed syncs, manually correct a match, confirm result changes, and understand whether scoring was recalculated.
-- Required tests: None for design-only work; implementation tasks will require component/route tests.
-- Documentation updates: Frontend docs or backlog implementation tasks.
+## DONE
+
+### DEVOPS-005: Free-Plan Render Blueprint Cron Cleanup
+
+- Owner: DevOps
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: REV-003 re-review.
+- Objective: Ensure the Render blueprint used for the current free-plan path does not provision or imply reliance on an unsupported Render cron service.
+- Acceptance criteria: `render.yaml` defines only the backend and frontend web services for the current free-plan default blueprint; deployment/infrastructure/environment docs describe local/operator scheduled sync against Neon as the active free-plan path; optional Render cron guidance remains clearly plan-dependent and cannot be accidentally provisioned by the default blueprint.
+- Required tests: YAML parse for `render.yaml`; docs consistency grep for Render cron/free-plan guidance.
+- Documentation updates: `docs/deployment.md`, `docs/infrastructure.md`, `docs/project-status.md`, and `docs/backlog.md`.
+- Risk: Low
+- Completion evidence: Removed the `worldcup-pool-fixture-sync` `type: cron`
+  service from `render.yaml`, leaving only backend and frontend web services in
+  the default blueprint. Updated deployment and infrastructure docs so
+  local/operator scheduled sync against Neon is the active free-plan path and
+  Render cron is only a future paid/eligible-plan option to add intentionally.
+  YAML parse and docs consistency grep passed. Independent Reviewer gate
+  decision: `APPROVED`.
+
+### REV-003: Knockout Data Operations Review
+
+- Owner: Reviewer
+- Supporting agents: Architect, Backend, DevOps, Frontend
+- Status: DONE
+- Dependencies: ARCH-003, ARCH-004, BE-005, DEVOPS-002, UX-002,
+  FE-006, BE-007, BE-008, BE-009, BE-010, DEVOPS-004, FE-008, and
+  FE-009 completed or ready for review.
+- Objective: Review the full tournament data operations slice for correctness, security, maintainability, and tournament-day readiness.
+- Acceptance criteria: Review decision is recorded as `APPROVED`, `APPROVED WITH COMMENTS`, or `CHANGES_REQUESTED`; findings are classified by severity; provider failure, manual fallback, scoring idempotency, and prediction locking are explicitly checked.
+- Required tests: Reviewer confirms relevant backend, frontend, migration, and deployment checks were run.
+- Documentation updates: Backlog and project status updated with review outcome.
+- Risk: High
+- Completion evidence: Independent Reviewer re-review decision:
+  `APPROVED WITH COMMENTS`. All prior REV-003 findings are remediated:
+  provider/manual override protection, tied-score advancing-winner predictions,
+  admin team/status fallback, provider fail-closed normalization with zero-score
+  preservation, free-plan sync documentation, and frontend `locked`/
+  `in_progress` status handling. Reviewer ran focused backend checks with 61
+  tests and Ruff; Orchestrator evidence included full backend tests (91
+  passed), backend Ruff, full frontend tests (44 passed), frontend lint, and
+  frontend typecheck. Non-blocking follow-up: `DEVOPS-005` should ensure the
+  default Render blueprint cannot accidentally provision the optional cron
+  service on the free-plan path.
+
+### FE-009: Tied Prediction and Admin Correction UI Alignment
+
+- Owner: Frontend
+- Supporting agents: Backend, Reviewer
+- Status: DONE
+- Dependencies: BE-008 and BE-009.
+- Objective: Update frontend prediction and admin operations UI for the ARCH-004 prediction/admin correction contract.
+- Acceptance criteria: Tied-score prediction forms require an advancing-winner selection and send `predicted_winner_team_id`; non-tied predictions omit/null the field; existing-match team and status corrections call the documented admin endpoints; frontend shows backend validation errors without duplicating scoring or provider rules.
+- Required tests: Frontend API/type/component tests for tied predictions, team correction, status correction, and error states.
+- Documentation updates: `docs/frontend.md`.
 - Risk: Medium
+- Completion evidence: Prediction write types/API/actions now carry
+  `predicted_winner_team_id`; tied prediction forms show a required
+  advancing-winner selector, while non-tied submissions clear the field to
+  `null`. Admin operations now expose existing-match team and operational
+  status corrections wired to the documented `/teams` and `/status`
+  endpoints, with completed status still handled by result completion.
+  Focused frontend tests passed with 26 tests; full frontend tests passed with
+  44 tests; lint passed; typecheck passed after elevated rerun because
+  sandboxed Next type generation hit `EPERM` writing `.next/types/routes.d.ts`.
+  Independent Reviewer gate decision: `APPROVED WITH COMMENTS`; non-blocking
+  comment noted some tests use source-text assertions, consistent with current
+  repo style.
+
+### FE-008: Match Status Contract Alignment
+
+- Owner: Frontend
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: Backend `MatchStatus` contract.
+- Objective: Align frontend match status typing and admin filters with backend `locked` and `in_progress` statuses.
+- Acceptance criteria: Frontend `MatchStatus` type covers backend statuses; admin filters and display handle locked/in-progress states; tests cover the added statuses.
+- Required tests: Frontend type/API/component tests.
+- Documentation updates: `docs/frontend.md` already documents the status handling contract.
+- Risk: Low
+- Completion evidence: Added `locked` and `in_progress` to frontend `MatchStatus`; admin status filters and display labels now cover all backend statuses; prediction cards keep locked and in-progress matches read-only with explicit copy. Focused frontend tests, full frontend tests, lint, and typecheck passed. Independent Reviewer gate decision: `APPROVED WITH COMMENTS`; non-blocking comment noted some status coverage uses source-text assertions, consistent with current repo style.
+
+### DEVOPS-004: Free-Plan Sync Operations Runbook
+
+- Owner: DevOps
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: User decision to avoid paid Render cron; ARCH-004 free-plan
+  sync contract accepted.
+- Objective: Update operations docs so production sync does not assume Render
+  cron on the current free-plan deployment path.
+- Acceptance criteria: Render cron is clearly documented as optional/plan-dependent; local scheduled sync against Neon is documented with Windows Task Scheduler or equivalent; secrets handling and tournament UUID setup are explicit; status docs no longer overstate Render cron availability.
+- Required tests: Documentation review; command syntax sanity where practical.
+- Documentation updates: `docs/deployment.md`, `docs/infrastructure.md`, `docs/environment.md`, `docs/project-status.md`, `docs/backlog.md`.
+- Risk: Medium
+- Completion evidence: Free-plan local/operator scheduled sync against Neon is documented as the MVP path, with Render cron retained only as optional and plan-dependent. Windows Task Scheduler and Linux/macOS equivalent commands, required environment variables, production tournament UUID setup, safe secret handling, logs, retry, and disable guidance were added. YAML parse, sync CLI help, docs consistency grep, and scoped diff check passed. Independent Reviewer gate decision: `APPROVED`.
+
+### BE-010: Provider Normalization Fail-Closed Hardening
+
+- Owner: Backend
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: ARCH-004 provider normalization contract.
+- Objective: Make provider status/score normalization fail closed on unknown statuses and preserve legitimate zero scores in nested score payloads.
+- Acceptance criteria: Unknown provider statuses produce provider/sync errors and do not mutate match state; completed provider rows with missing scores or winner fail closed; numeric zero scores are parsed and preserved from nested payloads; tests cover unknown status, 0-0, and one-sided zero score cases.
+- Required tests: Provider adapter tests and affected sync service tests.
+- Documentation updates: Status/evidence only; ARCH-004 contract remains unchanged.
+- Risk: High
+- Completion evidence: Backend implemented fail-closed provider status parsing, completed-result winner/score validation, and nested zero-score preservation. Focused checks passed with 18 tests and focused Ruff; full checks passed with 91 tests and `.\.venv\Scripts\python.exe -m ruff check .`. Independent Reviewer gate decision: `APPROVED`.
+
+### BE-007: Provider Sync Manual Override Protection
+
+- Owner: Backend
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: ARCH-004; BE-009.
+- Objective: Prevent provider sync/result progression from silently overwriting downstream bracket slots affected by manual corrections.
+- Acceptance criteria: Provider sync skips provider-managed writes for matches with `admin_override=true`; admin result correction marks downstream matches as manually overridden when it changes a propagated slot; provider progression fills only empty or same-team downstream slots; conflicts are reported as sync errors instead of overwriting; regression tests cover downstream overwrite scenarios.
+- Required tests: Fixture sync/admin service regression tests.
+- Completion evidence: Admin completion now marks changed downstream propagated slots with `sync_source="admin"` and `admin_override=true`; provider progression now skips downstream manual overrides, allows empty/same-team slots, and reports conflicts without overwrite. Focused service tests passed with 27 tests; full backend tests passed with 84 tests; Ruff passed. Independent Reviewer gate decision: `APPROVED`.
+- Risk: High
+
+### BE-009: Admin Team and Status Correction Fallback
+
+- Owner: Backend
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: ARCH-004 admin correction contract.
+- Objective: Provide safe admin fallback for correcting existing-match teams and operational status when provider data is wrong.
+- Acceptance criteria: `PATCH /api/v1/admin/matches/{match_id}/teams` corrects non-completed match teams or unresolved slots and sets `sync_source=admin`/`admin_override=true`; `PATCH /api/v1/admin/matches/{match_id}/status` accepts only `scheduled`, `locked`, `in_progress`, and `cancelled` for non-completed matches and sets manual override fields; neither endpoint scores predictions, completes matches, reopens completed matches, or edits bracket linkage; frontend can consume documented endpoints without inventing behavior.
+- Completion evidence: Added admin request schemas, route handlers, `AdminService` team/status correction commands, service validation tests, and OpenAPI contract tests. Focused backend checks passed with `.\.venv\Scripts\python.exe -m pytest tests/services/test_admin_service.py tests/api/test_api_contract.py` and focused Ruff. Full backend checks passed with `.\.venv\Scripts\python.exe -m pytest` (79 passed) and `.\.venv\Scripts\python.exe -m ruff check .`. Independent Reviewer gate decision: `APPROVED`.
+- Risk: High
+
+### BE-008: Tied Prediction Advancing-Winner Semantics
+
+- Owner: Backend
+- Supporting agents: Reviewer
+- Status: DONE
+- Dependencies: ARCH-004 prediction contract.
+- Objective: Allow predictions for tied end-of-play knockout scores to express the predicted advancing winner, so ADR scoring semantics can be applied.
+- Acceptance criteria: `predicted_winner_team_id` is persisted and exposed by prediction APIs; tied predictions require a home/away advancing team; non-tied predictions omit/null the field and derive winner from goals; tied predictions are rejected while teams are unknown; scoring awards correct-winner points according to the documented predicted winner; API, database, and backend tests agree. Frontend type/UI alignment remains tracked in FE-009.
+- Required tests: Domain scoring tests, prediction service/API tests, migration smoke tests, frontend API/type tests when FE-009 updates the UI contract.
+- Documentation updates: `docs/api.md`, `docs/database.md`, `docs/frontend.md`.
+- Risk: High
+- Completion evidence: Added migration `20260629_0003`, backend model/schema/repository/service/scoring support, and focused tests for tied home/away advancing winners, missing/invalid winner validation, non-tied winner rejection, scoring, API schema exposure, repository persistence, and migration shape. Backend checks passed: `.\.venv\Scripts\python.exe -m pytest` (63 passed) and `.\.venv\Scripts\python.exe -m ruff check .`. Independent Reviewer gate decision: `APPROVED WITH COMMENTS`; non-blocking comment noted that frontend prediction response/write types still need `predicted_winner_team_id`, already covered by FE-009.
+
+### ARCH-004: Knockout Operations Remediation Contract
+
+- Owner: Architect
+- Supporting agents: Backend, Frontend, DevOps, Reviewer
+- Status: DONE
+- Dependencies: REV-003 findings.
+- Objective: Define the minimal contract changes required to resolve REV-003 findings around tied predictions, manual fallback coverage, provider/manual override boundaries, provider fail-closed behavior, and free-plan sync operations.
+- Context: REV-003 found that the implemented operations slice does not yet fully satisfy ARCH-003 tournament-day semantics and fallback requirements.
+- Relevant files: `docs/decisions/`, `docs/api.md`, `docs/database.md`, `docs/frontend.md`, `docs/deployment.md`, `docs/infrastructure.md`, `docs/environment.md`, `docs/backlog.md`, `docs/project-status.md`.
+- Expected deliverables: Accepted ADR and synchronized contract notes specifying prediction advancing-winner semantics, admin team/status correction scope, provider overwrite protection rules, fail-closed provider normalization, free-plan sync operations, and follow-up implementation tasks.
+- Acceptance criteria: Backend/frontend/API/database impacts are explicit; implementation tasks can proceed without inventing contracts; MVP scope remains as small as safely possible.
+- Required tests: None for decision-only work.
+- Documentation updates: Added [ARCH-004 ADR](./decisions/arch-004-knockout-operations-remediation-contract.md) and synchronized API, database, frontend, deployment, infrastructure, environment, backlog, and project-status notes.
+- Risk: High
+- Completion evidence: Decided `predicted_winner_team_id` is required only for tied predictions; added narrow admin team/status correction endpoints; preserved match-level manual override protection for provider sync and downstream bracket slots; required provider normalization to fail closed for unknown statuses/missing completed data while preserving zero scores; documented Render cron as optional with local scheduled sync against Neon as the free-plan path; refined remediation task sequencing and acceptance criteria.
 
 ### FE-006: Admin Match Data Management UI
 
 - Owner: Frontend
 - Supporting agents: Product Designer, Backend
-- Status: PLANNED
-- Dependencies: UX-002 approved flow; BE-005 admin API contract.
+- Status: DONE
+- Dependencies: UX-002 completed flow; BE-005 admin API contract.
 - Objective: Implement the admin UI for sync visibility and manual match corrections.
 - Context: Frontend must consume documented backend endpoints and must not duplicate scoring, progression, or provider normalization rules.
 - Relevant files: `frontend/app/`, `frontend/components/`, `frontend/lib/api/`, `frontend/types/`.
@@ -37,20 +187,23 @@ None.
 - Required tests: Component/route tests for rendering, form behavior, and API client integration boundaries.
 - Documentation updates: `docs/frontend.md` and `docs/api.md` if frontend-facing contract examples are added.
 - Risk: Medium
+- Completion evidence: Added `/admin/tournaments/[tournamentId]` route, admin server actions, documented admin API client functions, admin operation UI for sync visibility, stage/status/source/search filters, create-match, kickoff correction, final-result, and rescore workflows, plus frontend API/types updates. Fixed Reviewer findings so mutation `403` switches to a no-controls access-denied state and missing route tournaments render `NoTournamentsState` before detail calls. Existing-match team reassignment remains out of scope because no documented backend endpoint exists. Focused admin tests passed; full frontend tests passed with 34 tests; frontend lint, typecheck, and production build passed. Independent Reviewer re-review decision: `APPROVED WITH COMMENTS`, with a non-blocking note that some route/access-denied tests remain source-text assertions matching current repo style.
 
-### REV-003: Knockout Data Operations Review
+### UX-002: Admin Data Correction and Sync Visibility Flow
 
-- Owner: Reviewer
-- Supporting agents: Architect, Backend, DevOps, Frontend
-- Status: PLANNED
-- Dependencies: ARCH-003, BE-005, DEVOPS-002, UX-002, and FE-006 completed or ready for review.
-- Objective: Review the full tournament data operations slice for correctness, security, maintainability, and tournament-day readiness.
-- Acceptance criteria: Review decision is recorded as `APPROVED`, `APPROVED WITH COMMENTS`, or `CHANGES_REQUESTED`; findings are classified by severity; provider failure, manual fallback, scoring idempotency, and prediction locking are explicitly checked.
-- Required tests: Reviewer confirms relevant backend, frontend, migration, and deployment checks were run.
-- Documentation updates: Backlog and project status updated with review outcome.
-- Risk: High
-
-## DONE
+- Owner: Product Designer
+- Supporting agents: Frontend, Backend
+- Status: COMPLETED
+- Dependencies: ARCH-003 internal data/status model; BE-005 admin API shape; DEVOPS-002 sync schedule and operational visibility.
+- Objective: Specify the minimal admin experience for viewing sync status and correcting teams, kickoff times, match status, and final results.
+- Context: The fallback UI is operationally critical during the tournament. It should be fast, clear, accessible, and hard to misuse.
+- Relevant files: `docs/frontend.md`, `docs/backlog.md`, `docs/project-status.md`.
+- Expected deliverables: Admin user flow; screen/content specification; correction forms; sync visibility; confirmation/error states; accessibility requirements; API data needs for FE-006.
+- Acceptance criteria: Admins can identify stale/failed syncs, manually correct a match, confirm result changes, understand whether scoring was recalculated, and recover from provider failure without frontend business-rule duplication.
+- Required tests: None for design-only work. FE-006 must add component, route, and API-client tests for the admin UI.
+- Documentation updates: Added the UX-002 specification to `docs/frontend.md`; updated backlog and project status.
+- Risk: Medium
+- Completion evidence: Defined the `/admin/tournaments/[tournamentId]` operator flow, sync freshness/error visibility, match list content, create/kickoff/result/rescore forms, confirmation copy, loading/empty/error/recovery states, accessibility requirements, responsive behavior, and FE-006 API data needs. Documented frontend boundaries: no scoring/progression logic, no invented endpoints, stale sync inferred from match audit fields, manual sync failure from sync response errors, and existing-match team reassignment treated as an API dependency because no such endpoint is documented in `docs/api.md`.
 
 ### BE-005: Knockout Fixture Import and Provider Sync Backend
 
@@ -82,7 +235,20 @@ None.
 - Required tests: Config validation or smoke checks where practical; CI/build impact verified.
 - Documentation updates: Deployment, environment, and infrastructure docs.
 - Risk: High
-- Completion evidence: Added Render cron blueprint service `worldcup-pool-fixture-sync` using the backend Docker image and documented 15-minute schedule; wired provider and sync environment variables in `render.yaml`, `.env.example`, and Docker Compose; added optional local `fixture-sync` Compose profile service; documented local run instructions, production runbook, logging/error expectations, retry guidance, manual fallback, rollback/pause steps, and MVP observability through cron logs plus match audit fields. Follow-up review findings were fixed by making the CLI `all` mode commit once only after all sync phases succeed and roll back on phase errors. Validation passed: YAML parse for `render.yaml` and `docker-compose.yml`; `docker compose --env-file .env.example --profile tools config` rendered successfully; `tests/config` passed; backend/script matrix passed with 53 tests; independent Reviewer gate found no blocking issues for BE-005/DEVOPS-002.
+- Completion evidence: Added scheduled-sync operations documentation,
+  provider/sync environment variables in `.env.example` and Docker Compose, and
+  the optional local `fixture-sync` Compose profile service for manual local
+  sync runs. The original Render cron blueprint service from this task was
+  later removed by DEVOPS-005 so the current default blueprint matches the
+  free-plan path. Documented local run instructions, production runbook,
+  logging/error expectations, retry guidance, manual fallback, rollback/pause
+  steps, and MVP observability through scheduler logs plus match audit fields.
+  Follow-up review findings were fixed by making the CLI `all` mode commit once
+  only after all sync phases succeed and roll back on phase errors. Validation
+  passed: YAML parse for `render.yaml` and `docker-compose.yml`; `docker compose
+  --env-file .env.example --profile tools config` rendered successfully;
+  `tests/config` passed; backend/script matrix passed with 53 tests;
+  independent Reviewer gate found no blocking issues for BE-005/DEVOPS-002.
 
 ### ARCH-003: Knockout Data Source and Contract Decision
 
@@ -284,7 +450,8 @@ None.
 - Out of scope: Group-stage management, qualification calculations, league standings, and scraping as a primary production data source.
 - Architecture decision: Use the hybrid model from [ARCH-003 ADR](./decisions/arch-003-knockout-data-source-and-result-contract.md): official/manual bracket seed, one approved provider adapter for operational updates, and admin fallback with auditable overrides. The preferred initial free candidate is `rezarahiminia/worldcup2026`, consumed through import/self-hosting or a controlled adapter rather than as a sole third-party uptime dependency.
 - Canonical result semantics: completed knockout matches are scored from end-of-play goals, while `winner_team_id` represents the advancing team; penalty shoot-out goals do not count toward exact-score or team-goal bonuses.
-- Next executable sequence: `UX-002` admin correction flow, `FE-006` admin UI, then `REV-003`.
+- Next executable sequence: blocked by `DEPLOY-001` external production
+  deployment prerequisites.
 - Acceptance criteria: The app can initialize knockout fixtures, sync teams/times/results from an approved source, audit changes, handle provider failure through admin fallback, and recalculate scoring idempotently after finished matches.
 - Risk: High
 

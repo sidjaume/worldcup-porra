@@ -40,6 +40,7 @@ class PredictionsRepository:
         match_id: UUID,
         predicted_home_goals: int,
         predicted_away_goals: int,
+        predicted_winner_team_id: UUID | None = None,
     ) -> Prediction:
         now = datetime.now(UTC)
         prediction = self.get_for_user(
@@ -54,6 +55,7 @@ class PredictionsRepository:
                 match_id=match_id,
                 predicted_home_goals=predicted_home_goals,
                 predicted_away_goals=predicted_away_goals,
+                predicted_winner_team_id=predicted_winner_team_id,
                 status=PredictionStatus.EDITABLE,
                 submitted_at=now,
                 updated_at=now,
@@ -62,6 +64,7 @@ class PredictionsRepository:
         else:
             prediction.predicted_home_goals = predicted_home_goals
             prediction.predicted_away_goals = predicted_away_goals
+            prediction.predicted_winner_team_id = predicted_winner_team_id
             prediction.status = PredictionStatus.EDITABLE
             prediction.updated_at = now
         self.db.flush()

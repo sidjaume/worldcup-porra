@@ -23,10 +23,22 @@ local defaults. Never commit real secrets.
 | `TOURNAMENT_PROVIDER_BASE_URL` | No | `https://worldcup26.ir/get` | Base URL for the configured knockout data provider or self-hosted equivalent. |
 | `TOURNAMENT_PROVIDER_API_KEY` | No | `...` | Optional provider key; leave empty for sources that do not require a key. |
 | `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS` | No | `10` | HTTP timeout for provider sync calls. |
-| `TOURNAMENT_SYNC_TOURNAMENT_ID` | Required for scheduled sync | `00000000-0000-0000-0000-000000000000` | Internal tournament UUID passed to the sync job. |
+| `TOURNAMENT_SYNC_TOURNAMENT_ID` | Required for scheduled sync | `00000000-0000-0000-0000-000000000000` | Internal production tournament UUID passed to the sync job. This is not a pool UUID or provider external ID. |
 | `TOURNAMENT_SYNC_YEAR` | No | `2026` | Tournament year passed to the sync job. |
 | `TOURNAMENT_SYNC_MODE` | No | `all` | Sync job mode: `all`, `teams`, `matches`, or `results`. |
 | `LOG_LEVEL` | No | `INFO` | Logging verbosity. |
+
+`TOURNAMENT_SYNC_*` variables belong to whichever scheduler is active. Render
+cron may use them when enabled, but on the free-plan path they can instead be
+set on a trusted local or operator-controlled scheduled task that runs against
+Neon with `DATABASE_URL`.
+
+For the MVP free-plan path, set the scheduler variables in the operator
+environment or scheduler secret store, not in committed files. The operator
+must set `DATABASE_URL` to the Neon production connection string and set
+`TOURNAMENT_SYNC_TOURNAMENT_ID` to the internal `tournaments.id` UUID for the
+production tournament row. Keep provider keys and database URLs out of
+PowerShell transcripts, copied command output, issue comments, and screenshots.
 
 ## Frontend Variables
 
@@ -96,6 +108,11 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 Do not place production secrets in `.env.example`, `render.yaml`, docs, commits,
 or issue comments.
+
+This also applies to local/operator scheduled sync. Do not commit a production
+`.env` file for the scheduler. If a local wrapper script is used to load
+secrets, keep it outside the repository or ensure it is ignored and managed by
+the operator's secret process.
 
 ## Render Mapping
 

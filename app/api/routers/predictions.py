@@ -52,6 +52,7 @@ def submit_prediction(
         match_id=match_id,
         predicted_home_goals=request.predicted_home_goals,
         predicted_away_goals=request.predicted_away_goals,
+        predicted_winner_team_id=request.predicted_winner_team_id,
     )
 
 
@@ -74,6 +75,7 @@ def list_match_predictions(
             display_name=prediction.user.display_name,
             predicted_home_goals=prediction.predicted_home_goals,
             predicted_away_goals=prediction.predicted_away_goals,
+            predicted_winner_team_id=prediction.predicted_winner_team_id,
             submitted_at=prediction.submitted_at,
             score=(
                 PredictionScoreRead.model_validate(prediction.score)
@@ -83,4 +85,3 @@ def list_match_predictions(
         )
         for prediction in predictions
     ]
-

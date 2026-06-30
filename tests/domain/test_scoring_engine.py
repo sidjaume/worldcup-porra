@@ -75,3 +75,25 @@ def test_tied_prediction_does_not_infer_advancing_side() -> None:
     assert result.points == 2
     assert result.correct_winner is False
     assert result.exact_score is True
+
+
+def test_tied_prediction_can_declare_correct_advancing_side() -> None:
+    result = ScoringEngine().calculate(
+        prediction=ScoreLine(1, 1, declared_winner_side="away"),
+        actual=ScoreLine(1, 1, declared_winner_side="away"),
+    )
+
+    assert result.points == 4
+    assert result.correct_winner is True
+    assert result.exact_score is True
+
+
+def test_tied_prediction_declared_wrong_side_gets_exact_score_only() -> None:
+    result = ScoringEngine().calculate(
+        prediction=ScoreLine(1, 1, declared_winner_side="home"),
+        actual=ScoreLine(1, 1, declared_winner_side="away"),
+    )
+
+    assert result.points == 2
+    assert result.correct_winner is False
+    assert result.exact_score is True

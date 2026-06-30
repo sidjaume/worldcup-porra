@@ -123,3 +123,63 @@ def test_pool_detail_response_schema_includes_active_state() -> None:
         "participant_count",
         "created_at",
     }
+
+
+def test_prediction_schemas_include_predicted_advancing_winner() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    assert "predicted_winner_team_id" in schemas["PredictionRequest"]["properties"]
+    assert "predicted_winner_team_id" not in schemas["PredictionRequest"]["required"]
+    assert "predicted_winner_team_id" in schemas["PredictionRead"]["properties"]
+    assert "predicted_winner_team_id" in schemas["MatchPredictionRead"]["properties"]
+
+
+def test_admin_match_correction_endpoints_match_contract() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    paths = response.json()["paths"]
+    team_patch = paths["/api/v1/admin/matches/{match_id}/teams"]["patch"]
+    status_patch = paths["/api/v1/admin/matches/{match_id}/status"]["patch"]
+
+    assert team_patch["requestBody"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/UpdateMatchTeamsRequest"
+    }
+    assert team_patch["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/MatchRead"
+    }
+    assert status_patch["requestBody"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/UpdateMatchStatusRequest"
+    }
+    assert status_patch["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/MatchRead"
+    }
+
+
+def test_admin_match_correction_request_schemas_match_contract() -> None:
+    response = TestClient(app).get("/openapi.json")
+
+    assert response.status_code == 200
+    schemas = response.json()["components"]["schemas"]
+    team_request = schemas["UpdateMatchTeamsRequest"]
+    status_request = schemas["UpdateMatchStatusRequest"]
+
+    assert "required" not in team_request
+    assert set(team_request["properties"]) == {"home_team_id", "away_team_id"}
+    assert team_request["properties"]["home_team_id"]["anyOf"] == [
+        {"type": "string", "format": "uuid"},
+        {"type": "null"},
+    ]
+    assert team_request["properties"]["away_team_id"]["anyOf"] == [
+        {"type": "string", "format": "uuid"},
+        {"type": "null"},
+    ]
+    assert status_request["required"] == ["status"]
+    assert status_request["properties"]["status"]["enum"] == [
+        "scheduled",
+        "locked",
+        "in_progress",
+        "cancelled",
+    ]

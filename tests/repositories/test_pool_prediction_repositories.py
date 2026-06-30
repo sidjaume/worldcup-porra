@@ -95,6 +95,41 @@ def test_prediction_upsert_updates_existing_row_and_preserves_uniqueness(
     assert db_session.scalar(select(func.count(Prediction.id))) == 1
 
 
+def test_prediction_upsert_persists_predicted_advancing_winner(
+    db_session: Session,
+) -> None:
+    context = _create_prediction_context(db_session)
+    predictions = PredictionsRepository(db_session)
+
+    created = predictions.upsert_for_user(
+        pool_id=context.pool_id,
+        user_id=context.user.id,
+        match_id=context.match.id,
+        predicted_home_goals=1,
+        predicted_away_goals=1,
+        predicted_winner_team_id=context.match.home_team_id,
+    )
+    updated = predictions.upsert_for_user(
+        pool_id=context.pool_id,
+        user_id=context.user.id,
+        match_id=context.match.id,
+        predicted_home_goals=2,
+        predicted_away_goals=2,
+        predicted_winner_team_id=context.match.away_team_id,
+    )
+
+    assert created.id == updated.id
+    assert updated.predicted_winner_team_id == context.match.away_team_id
+    db_session.expire_all()
+    persisted = predictions.get_for_user(
+        pool_id=context.pool_id,
+        user_id=context.user.id,
+        match_id=context.match.id,
+    )
+    assert persisted is not None
+    assert persisted.predicted_winner_team_id == context.match.away_team_id
+
+
 def test_rankings_use_repository_aggregates_and_joined_at_tie_breaker(
     db_session: Session,
 ) -> None:

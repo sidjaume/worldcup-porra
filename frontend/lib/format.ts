@@ -1,4 +1,4 @@
-import type { Match, Prediction, TournamentStage } from "@/types/api";
+import type { Match, MatchStatus, Prediction, TournamentStage } from "@/types/api";
 
 export const STAGES: { label: string; value: TournamentStage }[] = [
   { label: "Round of 32", value: "round_of_32" },
@@ -10,6 +10,18 @@ export const STAGES: { label: string; value: TournamentStage }[] = [
 
 export function stageLabel(stage: TournamentStage): string {
   return STAGES.find((item) => item.value === stage)?.label ?? stage;
+}
+
+export function matchStatusLabel(status: MatchStatus): string {
+  const labels = {
+    cancelled: "Cancelled",
+    completed: "Completed",
+    in_progress: "In progress",
+    locked: "Locked",
+    scheduled: "Scheduled",
+  } satisfies Record<MatchStatus, string>;
+
+  return labels[status];
 }
 
 export function formatDateTime(value: string): string {

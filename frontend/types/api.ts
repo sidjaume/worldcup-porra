@@ -99,7 +99,12 @@ export type TournamentStage =
   | "semi_final"
   | "final";
 
-export type MatchStatus = "scheduled" | "completed" | "cancelled";
+export type MatchStatus =
+  | "scheduled"
+  | "locked"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 export type Match = {
   id: ID;
@@ -112,6 +117,50 @@ export type Match = {
   home_score: number | null;
   away_score: number | null;
   winner_team_id: ID | null;
+  sync_source: string | null;
+  admin_override: boolean;
+  provider_last_synced_at: string | null;
+};
+
+export type SyncTournamentRequest = {
+  year: number;
+};
+
+export type SyncResult = {
+  teams_created: number;
+  teams_updated: number;
+  matches_created: number;
+  matches_updated: number;
+  errors: string[];
+};
+
+export type CreateMatchRequest = {
+  stage: TournamentStage;
+  bracket_position: number;
+  scheduled_at: string;
+  home_team_id?: ID | null;
+  away_team_id?: ID | null;
+};
+
+export type CompleteMatchRequest = {
+  home_score: number;
+  away_score: number;
+  winner_team_id: ID;
+};
+
+export type UpdateKickoffRequest = {
+  scheduled_at: string;
+};
+
+export type UpdateMatchTeamsRequest = {
+  home_team_id: ID | null;
+  away_team_id: ID | null;
+};
+
+export type OperationalMatchStatus = Exclude<MatchStatus, "completed">;
+
+export type UpdateMatchStatusRequest = {
+  status: OperationalMatchStatus;
 };
 
 export type Prediction = {
@@ -119,6 +168,7 @@ export type Prediction = {
   match_id: ID;
   predicted_home_goals: number;
   predicted_away_goals: number;
+  predicted_winner_team_id: ID | null;
   status: "editable" | "locked" | "scored";
   submitted_at: string;
   updated_at: string;
@@ -137,6 +187,7 @@ export type PredictionWriteResponse = {
   match_id: ID;
   predicted_home_goals: number;
   predicted_away_goals: number;
+  predicted_winner_team_id: ID | null;
   status: "editable" | "locked" | "scored";
   submitted_at: string;
   updated_at: string;
@@ -147,6 +198,7 @@ export type VisiblePrediction = {
   display_name: string;
   predicted_home_goals: number;
   predicted_away_goals: number;
+  predicted_winner_team_id: ID | null;
   submitted_at: string;
   score: PredictionScore | null;
 };

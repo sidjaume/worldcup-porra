@@ -20,7 +20,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.domain.enums import MatchStatus
+from app.domain.enums import MatchStatus, NextSlot
 from app.domain.errors import InvalidMatchResultError
 from app.domain.services.bracket_progression import BracketProgression, MatchProgression
 from app.models.match import Match
@@ -429,9 +429,46 @@ class FixtureSyncService:
         if next_match is None:
             return
         if assignment.home_team_id is not None:
-            next_match.home_team_id = assignment.home_team_id
+            self._assign_provider_downstream_slot(
+                next_match=next_match,
+                slot=NextSlot.HOME,
+                team_id=assignment.home_team_id,
+            )
         if assignment.away_team_id is not None:
-            next_match.away_team_id = assignment.away_team_id
+            self._assign_provider_downstream_slot(
+                next_match=next_match,
+                slot=NextSlot.AWAY,
+                team_id=assignment.away_team_id,
+            )
+
+    @staticmethod
+    def _assign_provider_downstream_slot(
+        *,
+        next_match: Match,
+        slot: NextSlot,
+        team_id: UUID,
+    ) -> None:
+        if next_match.admin_override:
+            logger.debug(
+                "Skipping bracket progression into match %s - admin_override",
+                next_match.id,
+            )
+            return
+
+        current_team_id = (
+            next_match.home_team_id if slot == NextSlot.HOME else next_match.away_team_id
+        )
+        if current_team_id is not None and current_team_id != team_id:
+            raise ValidationError(
+                "Provider bracket progression would overwrite a populated "
+                f"{slot.value} slot on match {next_match.id}."
+            )
+        if current_team_id == team_id:
+            return
+        if slot == NextSlot.HOME:
+            next_match.home_team_id = team_id
+        else:
+            next_match.away_team_id = team_id
 
     def _finalize_sync(self, result: SyncResult, *, commit: bool) -> SyncResult:
         if result.errors:

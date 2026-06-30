@@ -12,6 +12,7 @@ from app.models.match import enum_values
 if TYPE_CHECKING:
     from app.models.match import Match
     from app.models.pool import Pool
+    from app.models.team import Team
     from app.models.user import User
 
 
@@ -28,6 +29,10 @@ class Prediction(UUIDPrimaryKeyMixin, Base):
     match_id: Mapped[UUID] = mapped_column(ForeignKey("matches.id"), nullable=False)
     predicted_home_goals: Mapped[int] = mapped_column(Integer, nullable=False)
     predicted_away_goals: Mapped[int] = mapped_column(Integer, nullable=False)
+    predicted_winner_team_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("teams.id"),
+        nullable=True,
+    )
     status: Mapped[PredictionStatus] = mapped_column(
         Enum(PredictionStatus, name="prediction_status", values_callable=enum_values),
         nullable=False,
@@ -39,6 +44,7 @@ class Prediction(UUIDPrimaryKeyMixin, Base):
     user: Mapped["User"] = relationship()
     pool: Mapped["Pool"] = relationship()
     match: Mapped["Match"] = relationship()
+    predicted_winner_team: Mapped["Team | None"] = relationship()
     score: Mapped["PredictionScore | None"] = relationship(
         back_populates="prediction",
         cascade="all, delete-orphan",

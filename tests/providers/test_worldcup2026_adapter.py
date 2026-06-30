@@ -35,6 +35,7 @@ def test_adapter_filters_knockout_matches_and_derives_stage_positions() -> None:
                     "type": "Round of 32",
                     "match_number": 74,
                     "date": "2026-06-29T18:00:00Z",
+                    "status": "scheduled",
                     "home_team_id": "esp",
                     "away_team_id": "por",
                 },
@@ -82,6 +83,7 @@ def test_adapter_raises_on_malformed_team_record() -> None:
                     "type": "Round of 32",
                     "match_number": 73,
                     "date": "2026-06-28T18:00:00Z",
+                    "status": "scheduled",
                     "home_team_id": "esp",
                     "away_team_id": "por",
                 }
@@ -91,6 +93,105 @@ def test_adapter_raises_on_malformed_team_record() -> None:
 
     with pytest.raises(ProviderError):
         adapter.fetch_teams(2026)
+
+
+def test_adapter_raises_on_unknown_status() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    status="abandoned",
+                    score={"home_score": 1, "away_score": 0},
+                    winner_team_id="esp",
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(ProviderError, match="unknown status"):
+        adapter.fetch_matches(2026)
+
+
+def test_adapter_raises_on_missing_status() -> None:
+    payload = _completed_match(
+        score={"home_score": 1, "away_score": 0},
+        winner_team_id="esp",
+    )
+    del payload["status"]
+    adapter = PayloadAdapter({"/games": [payload]})
+
+    with pytest.raises(ProviderError, match="missing status"):
+        adapter.fetch_matches(2026)
+
+
+def test_adapter_preserves_zero_zero_nested_score_with_winner() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 0, "away_score": 0},
+                    winner_team_id="por",
+                )
+            ],
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].home_score == 0
+    assert matches[0].away_score == 0
+    assert matches[0].winner_provider_ref == "por"
+
+
+def test_adapter_preserves_one_sided_zero_nested_score() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 0, "away_score": 2},
+                    winner_team_id="por",
+                )
+            ],
+        }
+    )
+
+    matches = adapter.fetch_matches(2026)
+
+    assert matches[0].home_score == 0
+    assert matches[0].away_score == 2
+    assert matches[0].winner_provider_ref == "por"
+
+
+def test_adapter_raises_on_completed_match_missing_winner() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 2, "away_score": 1},
+                    winner_team_id=None,
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(ProviderError, match="missing winner"):
+        adapter.fetch_matches(2026)
+
+
+def test_adapter_raises_on_completed_match_missing_score() -> None:
+    adapter = PayloadAdapter(
+        {
+            "/games": [
+                _completed_match(
+                    score={"home_score": 2},
+                    winner_team_id="esp",
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(ProviderError, match="missing scores"):
+        adapter.fetch_matches(2026)
 
 
 def test_adapter_raises_on_unexpected_payload_shape(monkeypatch) -> None:
@@ -113,3 +214,24 @@ def test_adapter_raises_on_unexpected_payload_shape(monkeypatch) -> None:
 
     with pytest.raises(ProviderError):
         adapter._get("/games")
+
+
+def _completed_match(
+    *,
+    score: dict[str, int],
+    winner_team_id: str | None,
+    status: str = "finished",
+) -> dict[str, object]:
+    match: dict[str, object] = {
+        "id": "m73",
+        "type": "Round of 32",
+        "match_number": 73,
+        "date": "2026-06-28T18:00:00Z",
+        "status": status,
+        "home_team_id": "esp",
+        "away_team_id": "por",
+        "score": score,
+    }
+    if winner_team_id is not None:
+        match["winner_team_id"] = winner_team_id
+    return match

@@ -18,6 +18,16 @@ def test_initial_migration_upgrades_and_downgrades_cleanly(
         assert "users" in inspector.get_table_names()
         assert "predictions" in inspector.get_table_names()
         assert "alembic_version" in inspector.get_table_names()
+        prediction_columns = {
+            column["name"] for column in inspector.get_columns("predictions")
+        }
+        prediction_foreign_keys = inspector.get_foreign_keys("predictions")
+        assert "predicted_winner_team_id" in prediction_columns
+        assert any(
+            foreign_key["constrained_columns"] == ["predicted_winner_team_id"]
+            and foreign_key["referred_table"] == "teams"
+            for foreign_key in prediction_foreign_keys
+        )
     finally:
         engine.dispose()
 

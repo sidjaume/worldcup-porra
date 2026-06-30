@@ -25,3 +25,16 @@ describe("updatePoolAction", () => {
     expect(updatePoolActionSource).not.toContain("formData.get(\"is_active\")");
   });
 });
+
+describe("submitPredictionAction", () => {
+  it("passes tied advancing winners and clears non-tied winner ids", () => {
+    expect(source).toContain('readNullableString(formData, "predicted_winner_team_id")');
+    expect(source).toContain("homeGoals === awayGoals ? predictedWinnerTeamId : null");
+    expect(source).toContain("Choose the team you expect to advance.");
+  });
+
+  it("keeps backend validation errors on the existing action error path", () => {
+    expect(source).toContain("if (error instanceof ApiError)");
+    expect(source).toContain("return { error: error.message };");
+  });
+});

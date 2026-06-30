@@ -225,10 +225,15 @@ class WorldCup2026Adapter:
         if scheduled_at is None:
             raise ProviderError(f"Provider match {ref} has no parseable date.")
 
-        status_raw = str(
-            item.get("status") or item.get("match_status") or "scheduled"
-        ).lower().strip()
-        status = _STATUS_MAP.get(status_raw, MatchStatus.SCHEDULED)
+        status_raw = self._first_present(item, "status", "match_status")
+        if status_raw is None:
+            raise ProviderError(f"Provider match {ref} is missing status.")
+        status_key = str(status_raw).lower().strip()
+        status = _STATUS_MAP.get(status_key)
+        if status is None:
+            raise ProviderError(
+                f"Provider match {ref} has unknown status {status_raw!r}."
+            )
 
         home_team_ref = self._team_ref(item, "home")
         away_team_ref = self._team_ref(item, "away")
@@ -238,22 +243,27 @@ class WorldCup2026Adapter:
         winner_ref: str | None = None
 
         if status == MatchStatus.COMPLETED:
-            score_data = item.get("score") or item
+            score_data_raw = item.get("score")
+            score_data = score_data_raw if isinstance(score_data_raw, dict) else item
             home_score = self._safe_int(
-                score_data.get("home_score")
-                or score_data.get("home_goals")
-                or item.get("home_score")
+                self._first_present(score_data, "home_score", "home_goals")
+                if isinstance(score_data, dict)
+                else None
             )
             away_score = self._safe_int(
-                score_data.get("away_score")
-                or score_data.get("away_goals")
-                or item.get("away_score")
+                self._first_present(score_data, "away_score", "away_goals")
+                if isinstance(score_data, dict)
+                else None
             )
             if home_score is None or away_score is None:
                 raise ProviderError(
                     f"Provider match {ref} is completed but missing scores."
                 )
             winner_ref = self._extract_winner_ref(item)
+            if winner_ref is None:
+                raise ProviderError(
+                    f"Provider match {ref} is completed but missing winner."
+                )
 
         return ProviderMatch(
             provider_ref=str(ref),
@@ -323,7 +333,7 @@ class WorldCup2026Adapter:
         # Try nested dict first: {"home_team": {"id": ...}}
         nested = item.get(f"{side}_team")
         if isinstance(nested, dict):
-            ref = nested.get("id") or nested.get("team_id")
+            ref = WorldCup2026Adapter._first_present(nested, "id", "team_id")
             if ref is not None:
                 return str(ref)
         # Flat field: home_team_id, away_team_id
@@ -332,7 +342,7 @@ class WorldCup2026Adapter:
             return str(flat)
         camel = item.get(f"{side}Team")
         if isinstance(camel, dict):
-            ref = camel.get("id") or camel.get("_id") or camel.get("team_id")
+            ref = WorldCup2026Adapter._first_present(camel, "id", "_id", "team_id")
             if ref is not None:
                 return str(ref)
         camel_id = item.get(f"{side}TeamId")
@@ -346,11 +356,13 @@ class WorldCup2026Adapter:
         # Try nested winner object
         winner = item.get("winner")
         if isinstance(winner, dict):
-            ref = winner.get("id") or winner.get("team_id")
+            ref = WorldCup2026Adapter._first_present(winner, "id", "team_id")
             if ref is not None:
                 return str(ref)
         # Flat field
-        flat = item.get("winner_team_id") or item.get("winner_id")
+        flat = WorldCup2026Adapter._first_present(
+            item, "winner_team_id", "winner_id"
+        )
         if flat is not None:
             return str(flat)
         return None

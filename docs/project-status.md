@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 ## Current Milestone
 
@@ -33,6 +33,18 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - ARCH-003 selects `rezarahiminia/worldcup2026` as the preferred initial free data-source candidate for DATA-EPIC-001, with import/self-hosting preferred over blind public-host dependency.
 - BE-005 fixture import/provider sync backend implemented and approved by independent Reviewer gate.
 - DEVOPS-002 tournament data sync operations implemented and approved by independent Reviewer gate.
+- UX-002 admin correction and sync visibility flow specified for FE-006.
+- FE-006 admin match data management UI approved with comments by independent Reviewer gate.
+- ARCH-004 knockout operations remediation contract accepted and synchronized across API, database, frontend, deployment, infrastructure, environment, backlog, and status docs.
+- BE-008 tied prediction advancing-winner backend semantics implemented and approved with comments by independent Reviewer gate.
+- BE-009 admin team/status correction fallback implemented and approved by independent Reviewer gate.
+- BE-007 provider sync manual override protection implemented and approved by independent Reviewer gate.
+- BE-010 provider normalization fail-closed hardening implemented and approved by independent Reviewer gate.
+- DEVOPS-004 free-plan sync operations runbook approved by independent Reviewer gate.
+- FE-008 match status contract alignment approved with comments by independent Reviewer gate.
+- FE-009 tied prediction and admin correction UI alignment approved with comments by independent Reviewer gate.
+- REV-003 knockout data operations re-review approved with comments by independent Reviewer gate.
+- DEVOPS-005 free-plan Render blueprint cron cleanup approved by independent Reviewer gate.
 
 ## Verification Evidence
 
@@ -72,11 +84,57 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - BE-005 backend lint: `.\.venv\Scripts\python.exe -m ruff check app tests scripts` passed.
 - BE-005 focused regression matrix: `.\.venv\Scripts\python.exe -m pytest tests/providers/test_worldcup2026_adapter.py tests/services/test_fixture_sync_service.py tests/services/test_admin_service.py tests/scripts/test_sync_knockout_fixtures.py` passed, 12 tests.
 - BE-005 backend/script matrix: `.\.venv\Scripts\python.exe -m pytest tests/api tests/config tests/domain tests/services tests/providers tests/db tests/repositories tests/scripts` passed, 53 tests.
-- BE-005/DEVOPS-002 independent Reviewer gate: no blocking issues found; residual runtime validation gaps are the first live provider response shape and actual Render cron execution.
+- BE-005/DEVOPS-002 independent Reviewer gate: no blocking issues found; residual runtime validation gaps are the first live provider response shape and actual scheduled-sync execution.
 - DEVOPS-002 YAML parse: `render.yaml` and `docker-compose.yml` parsed successfully with `yaml.safe_load`.
 - DEVOPS-002 Compose validation: `docker compose --env-file .env.example --profile tools config` rendered successfully.
 - DEVOPS-002 config tests: `.\.venv\Scripts\python.exe -m pytest tests\config` passed, 4 tests.
 - DEVOPS-002 whitespace check: `git diff --check` passed with only Windows LF/CRLF warnings.
+- UX-002 documentation-only verification: `docs/frontend.md` now defines the admin operator flow, sync visibility, correction forms, confirmation/error states, accessibility requirements, responsive behavior, and FE-006 API data needs. No automated tests were required for this design-only task; FE-006 is expected to add component, route, and API-client tests.
+- FE-006 frontend lint: `npm.cmd run lint` passed.
+- FE-006 frontend tests: `npm.cmd test` passed, 17 files and 34 tests.
+- FE-006 frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- FE-006 frontend build: `npm.cmd run build` passed after elevated rerun for `.next` writes.
+- FE-006 Reviewer gate: initial decision `CHANGES_REQUESTED`; follow-up fixed admin mutation `403` no-controls state and missing route tournament empty state; re-review decision `APPROVED WITH COMMENTS`.
+- REV-003 full knockout data operations review decision: `CHANGES_REQUESTED`.
+- ARCH-004 documentation-only verification: [ARCH-004 ADR](./decisions/arch-004-knockout-operations-remediation-contract.md) accepted the minimal remediation contract for tied prediction advancing winners, admin team/status correction endpoints, manual override protection, provider fail-closed normalization, and free-plan sync operations. No automated tests were required.
+- BE-008 backend checks: `.\.venv\Scripts\python.exe -m pytest` passed, 63 tests; `.\.venv\Scripts\python.exe -m ruff check .` passed. Independent Reviewer reproduced focused checks with 27 tests plus Ruff on app/tests and returned `APPROVED WITH COMMENTS`.
+- BE-009 focused backend checks: `.\.venv\Scripts\python.exe -m pytest tests/services/test_admin_service.py tests/api/test_api_contract.py` passed, 27 tests; `.\.venv\Scripts\python.exe -m ruff check app/api/routers/admin.py app/api/schemas/admin.py app/services/admin_service.py tests/services/test_admin_service.py tests/api/test_api_contract.py` passed.
+- BE-009 full backend checks: `.\.venv\Scripts\python.exe -m pytest` passed, 79 tests; `.\.venv\Scripts\python.exe -m ruff check .` passed.
+- BE-009 independent Reviewer gate: `APPROVED`.
+- BE-007 focused backend checks: `.\.venv\Scripts\python.exe -m pytest tests/services/test_admin_service.py tests/services/test_fixture_sync_service.py -q` passed, 27 tests; `.\.venv\Scripts\python.exe -m ruff check app/services/admin_service.py app/services/fixture_sync_service.py tests/services/test_admin_service.py tests/services/test_fixture_sync_service.py` passed.
+- BE-007 full backend checks: `.\.venv\Scripts\python.exe -m pytest -q` passed, 84 tests; `.\.venv\Scripts\python.exe -m ruff check .` passed.
+- BE-007 independent Reviewer gate: `APPROVED`.
+- BE-010 focused backend checks: `.\.venv\Scripts\python.exe -m pytest tests\providers\test_worldcup2026_adapter.py tests\services\test_fixture_sync_service.py -q` passed, 18 tests; `.\.venv\Scripts\python.exe -m ruff check app\providers\worldcup2026.py tests\providers\test_worldcup2026_adapter.py tests\services\test_fixture_sync_service.py` passed.
+- BE-010 full backend checks: `.\.venv\Scripts\python.exe -m pytest -q` passed, 91 tests; `.\.venv\Scripts\python.exe -m ruff check .` passed.
+- BE-010 independent Reviewer gate: `APPROVED`.
+- DEVOPS-004 docs/config sanity: `render.yaml` and `docker-compose.yml` parsed
+  successfully with `yaml.safe_load`.
+- DEVOPS-004 CLI syntax sanity: `.\.venv\Scripts\python.exe -m scripts.sync_knockout_fixtures --help` returned usage successfully without requiring production secrets.
+- DEVOPS-004 docs consistency grep: Render cron references in deployment,
+  infrastructure, environment, backlog, and status docs now describe it as
+  optional/plan-dependent, with local/operator scheduled sync against Neon as
+  the free-plan path.
+- DEVOPS-004 independent Reviewer gate: `APPROVED`.
+- FE-008 focused frontend tests: `npm.cmd test -- components/admin/AdminOperations.test.ts components/predictions/MatchPredictionCard.test.ts` passed, 2 files and 11 tests.
+- FE-008 frontend lint: `npm.cmd run lint` passed.
+- FE-008 frontend tests: `npm.cmd test` passed, 18 files and 37 tests.
+- FE-008 frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- FE-008 independent Reviewer gate: `APPROVED WITH COMMENTS`.
+- FE-009 focused frontend tests: `npm.cmd test -- app/actions.test.ts app/admin/actions.test.ts lib/api/admin.test.ts lib/api/predictions.test.ts components/admin/AdminOperations.test.ts components/predictions/MatchPredictionCard.test.ts` passed, 6 files and 26 tests.
+- FE-009 frontend tests: `npm.cmd test` passed, 19 files and 44 tests.
+- FE-009 frontend lint: `npm.cmd run lint` passed.
+- FE-009 frontend typecheck: `npm.cmd run typecheck` passed after elevated rerun for `.next/types` writes.
+- FE-009 independent Reviewer gate: `APPROVED WITH COMMENTS`.
+- REV-003 re-review readiness backend checks: `.\.venv\Scripts\python.exe -m pytest` passed, 91 tests; `.\.venv\Scripts\python.exe -m ruff check .` passed.
+- REV-003 Reviewer re-review focused backend checks: 61 tests passed; focused Ruff passed.
+- REV-003 re-review decision: `APPROVED WITH COMMENTS`. Non-blocking follow-up: `DEVOPS-005` should ensure the default free-plan Render blueprint does not accidentally provision the optional cron service.
+- DEVOPS-005 YAML parse: `.\.venv\Scripts\python.exe -c "import yaml, pathlib; data=yaml.safe_load(pathlib.Path('render.yaml').read_text()); services=data.get('services', []); print('render.yaml parsed'); print('service_count=', len(services)); print('service_types=', ','.join(s.get('type','') for s in services)); print('service_names=', ','.join(s.get('name','') for s in services))"` passed with `service_count= 2`, `service_types= web,web`, and `service_names= worldcup-pool-api,worldcup-pool-frontend`.
+- DEVOPS-005 blueprint cron grep: `rg -n 'type:\s*cron' render.yaml` returned no matches.
+- DEVOPS-005 stale docs grep returned no matches for prior statements that the
+  default Render blueprint defines a cron service.
+- DEVOPS-005 free-plan docs grep found the updated default-blueprint/free-plan guidance in deployment and infrastructure docs.
+- DEVOPS-005 scoped whitespace check: `git diff --check -- render.yaml docs/deployment.md docs/infrastructure.md docs/environment.md docs/project-status.md docs/backlog.md` passed with LF/CRLF warnings only.
+- DEVOPS-005 independent Reviewer gate: `APPROVED`.
 
 ## In Progress
 
@@ -88,7 +146,7 @@ None.
 
 ## Planned
 
-- Planned execution order for DATA-EPIC-001 after pending reviews: UX-002 admin correction flow; FE-006 admin match data UI; REV-003 full review.
+None.
 
 ## Blocked
 
@@ -117,8 +175,8 @@ Not deployed to production. Local Docker deployment is healthy.
 
 ## Next Recommended Task
 
-Start UX-002: Admin Data Correction and Sync Visibility Flow.
+Resolve external production deployment blockers for DEPLOY-001.
 
-Rationale: BE-005 and DEVOPS-002 are now implemented, fixed after review
-findings, and approved by the independent Reviewer gate. The next dependency
-for FE-006 is the admin correction and sync visibility flow specification.
+Rationale: All unblocked DATA-EPIC remediation and review work is approved.
+Production deployment remains blocked by external Render, Neon, Google OAuth,
+provider, and secret configuration.

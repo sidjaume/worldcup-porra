@@ -1,10 +1,11 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from app.api.schemas.tournaments import MatchRead
-from app.domain.enums import NextSlot, TournamentStage
+from app.domain.enums import MatchStatus, NextSlot, TournamentStage
 
 
 class CreateMatchRequest(BaseModel):
@@ -31,6 +32,24 @@ class UpdateKickoffRequest(BaseModel):
     """Request body for updating a match kickoff time."""
 
     scheduled_at: datetime
+
+
+class UpdateMatchTeamsRequest(BaseModel):
+    """Request body for correcting teams on a non-completed match."""
+
+    home_team_id: UUID | None = None
+    away_team_id: UUID | None = None
+
+
+class UpdateMatchStatusRequest(BaseModel):
+    """Request body for correcting a non-completed match's operational status."""
+
+    status: Literal[
+        MatchStatus.SCHEDULED,
+        MatchStatus.LOCKED,
+        MatchStatus.IN_PROGRESS,
+        MatchStatus.CANCELLED,
+    ]
 
 
 class SyncTournamentRequest(BaseModel):

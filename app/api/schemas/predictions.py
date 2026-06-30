@@ -9,6 +9,7 @@ from app.domain.enums import PredictionStatus
 class PredictionRequest(BaseModel):
     predicted_home_goals: int = Field(ge=0)
     predicted_away_goals: int = Field(ge=0)
+    predicted_winner_team_id: UUID | None = None
 
 
 class PredictionScoreRead(BaseModel):
@@ -30,6 +31,7 @@ class PredictionRead(BaseModel):
     match_id: UUID
     predicted_home_goals: int
     predicted_away_goals: int
+    predicted_winner_team_id: UUID | None = None
     status: PredictionStatus
     submitted_at: datetime
     updated_at: datetime
@@ -41,6 +43,7 @@ class MatchPredictionRead(BaseModel):
     display_name: str
     predicted_home_goals: int
     predicted_away_goals: int
+    predicted_winner_team_id: UUID | None = None
     submitted_at: datetime
     score: PredictionScoreRead | None = None
 
@@ -54,4 +57,3 @@ class RankingRead(BaseModel):
     correct_winners: int
     predictions_scored: int
     predictions_submitted: int
-

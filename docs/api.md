@@ -54,6 +54,13 @@ The ARCH-002 decisions are reflected in this contract:
 - `POST /api/v1/admin/matches/{match_id}/rescore` returns `MatchRead`.
 - Rankings are ordered by total points descending, exact scores descending, correct winners descending, then earliest active participant join time ascending.
 
+The ARCH-004 decisions extend this contract:
+
+- Predictions include `predicted_winner_team_id` only for tied-score advancing-winner semantics.
+- Existing-match admin team correction and status correction are separate command endpoints.
+- Provider sync must preserve manual overrides and fail closed on unknown provider statuses.
+- Render cron is optional for operations; the API contract is the same whether sync is admin-triggered, locally scheduled, or cron-triggered.
+
 Error format is implemented for service/domain errors, unauthorized cases, and FastAPI/Pydantic `422` request validation errors.
 
 ## Frontend/Backend Contract Rules
@@ -506,6 +513,7 @@ Response:
     "match_id": "uuid",
     "predicted_home_goals": 3,
     "predicted_away_goals": 1,
+    "predicted_winner_team_id": null,
     "status": "editable",
     "submitted_at": "2026-06-28T17:00:00Z",
     "updated_at": "2026-06-28T17:00:00Z",
@@ -523,7 +531,8 @@ Request:
 ```json
 {
   "predicted_home_goals": 3,
-  "predicted_away_goals": 1
+  "predicted_away_goals": 1,
+  "predicted_winner_team_id": null
 }
 ```
 
@@ -536,6 +545,7 @@ Response:
   "match_id": "uuid",
   "predicted_home_goals": 3,
   "predicted_away_goals": 1,
+  "predicted_winner_team_id": null,
   "status": "editable",
   "submitted_at": "2026-06-28T17:00:00Z",
   "updated_at": "2026-06-28T17:00:00Z"
@@ -549,6 +559,21 @@ Validation:
 - Match must be scheduled.
 - Current server time must be before lock time.
 - Goal counts must be non-negative integers.
+- If `predicted_home_goals == predicted_away_goals`, `predicted_winner_team_id`
+  is required and must match the home or away team for the match.
+- If predicted goals are not tied, `predicted_winner_team_id` must be omitted or
+  `null`; the predicted winner is derived from the goals.
+- Tied predictions are rejected while either match team is unknown.
+
+Example tied prediction:
+
+```json
+{
+  "predicted_home_goals": 1,
+  "predicted_away_goals": 1,
+  "predicted_winner_team_id": "uuid-of-home-or-away-team"
+}
+```
 
 ### GET `/api/v1/pools/{pool_id}/matches/{match_id}/predictions`
 
@@ -563,6 +588,7 @@ Response:
     "display_name": "User Name",
     "predicted_home_goals": 3,
     "predicted_away_goals": 1,
+    "predicted_winner_team_id": null,
     "submitted_at": "2026-06-28T17:00:00Z",
     "score": {
       "points": 4,
@@ -655,6 +681,55 @@ Request:
 
 Response: `MatchRead`.
 
+### PATCH `/api/v1/admin/matches/{match_id}/teams`
+
+Corrects the teams assigned to an existing non-completed match. Admin-only.
+This is a fallback for provider or seed mistakes and intentionally does not
+complete the match, score predictions, or edit bracket linkage.
+
+Request:
+
+```json
+{
+  "home_team_id": "uuid-or-null",
+  "away_team_id": "uuid-or-null"
+}
+```
+
+Response: `MatchRead`.
+
+Validation:
+
+- At least one of `home_team_id` or `away_team_id` must be present.
+- Match must not be completed.
+- Each non-null team must belong to the match tournament.
+- If both teams are present, they must be distinct.
+- The backend sets `sync_source="admin"` and `admin_override=true`.
+
+### PATCH `/api/v1/admin/matches/{match_id}/status`
+
+Corrects operational status for an existing non-completed match. Admin-only.
+
+Request:
+
+```json
+{
+  "status": "in_progress"
+}
+```
+
+Response: `MatchRead`.
+
+Validation:
+
+- Accepted values: `scheduled`, `locked`, `in_progress`, `cancelled`.
+- `completed` is rejected here; use `PATCH /api/v1/admin/matches/{match_id}`
+  with result fields to complete a match.
+- Completed matches cannot be reopened through this MVP endpoint.
+- The endpoint does not change teams, kickoff time, scores, winner, scoring, or
+  bracket linkage.
+- The backend sets `sync_source="admin"` and `admin_override=true`.
+
 ### POST `/api/v1/admin/matches/{match_id}/rescore`
 
 Recalculates scores for a completed match. Admin-only.
@@ -667,6 +742,17 @@ Runs the configured provider adapter for an admin-triggered sync. Admin-only.
 The backend imports provider teams, imports or updates knockout fixtures, then
 syncs in-progress/completed results. Sync is idempotent: rerunning it must not
 duplicate teams, matches, prediction scores, or bracket progression.
+
+Manual overrides take precedence over provider data. Provider sync must not
+mutate provider-managed fields on matches with `admin_override=true`, and
+provider-driven bracket progression must not replace a populated downstream
+slot with a different team. Such rows should be reported in `errors` rather
+than silently overwritten.
+
+Provider normalization fails closed: unknown provider statuses, missing
+completed-result scores, or missing advancing winners produce sync errors and
+must not default to scheduled. Numeric zero is a valid score and must be
+preserved.
 
 Request:
 

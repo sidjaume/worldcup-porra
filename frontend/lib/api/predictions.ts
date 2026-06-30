@@ -27,6 +27,7 @@ export function submitPrediction(
   matchId: ID,
   predictedHomeGoals: number,
   predictedAwayGoals: number,
+  predictedWinnerTeamId: ID | null,
 ): Promise<PredictionWriteResponse> {
   return apiRequest<PredictionWriteResponse>(
     `/api/v1/pools/${poolId}/matches/${matchId}/prediction`,
@@ -35,6 +36,7 @@ export function submitPrediction(
       body: {
         predicted_home_goals: predictedHomeGoals,
         predicted_away_goals: predictedAwayGoals,
+        predicted_winner_team_id: predictedWinnerTeamId,
       },
       method: "PUT",
     },

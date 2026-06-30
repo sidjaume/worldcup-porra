@@ -33,6 +33,7 @@ class PredictionService:
         match_id: UUID,
         predicted_home_goals: int,
         predicted_away_goals: int,
+        predicted_winner_team_id: UUID | None = None,
     ):
         pool = self._require_active_participant(pool_id=pool_id, user_id=user_id)
         match = self.tournaments.get_match(match_id)
@@ -40,6 +41,12 @@ class PredictionService:
             raise NotFoundError("Match not found for this pool.")
         if match.home_team_id is None or match.away_team_id is None:
             raise ValidationError("Cannot predict a match before both teams are known.")
+        self._validate_predicted_winner(
+            match=match,
+            predicted_home_goals=predicted_home_goals,
+            predicted_away_goals=predicted_away_goals,
+            predicted_winner_team_id=predicted_winner_team_id,
+        )
         if not self.policy.can_edit(scheduled_at=match.scheduled_at, status=match.status):
             raise PredictionLockedError("Predictions are closed for this match.")
 
@@ -49,6 +56,7 @@ class PredictionService:
             match_id=match_id,
             predicted_home_goals=predicted_home_goals,
             predicted_away_goals=predicted_away_goals,
+            predicted_winner_team_id=predicted_winner_team_id,
         )
         self.db.commit()
         return prediction
@@ -93,6 +101,7 @@ class PredictionService:
             predicted = ScoreLine(
                 home_goals=prediction.predicted_home_goals,
                 away_goals=prediction.predicted_away_goals,
+                declared_winner_side=self._winner_side_for_prediction(prediction, match),
             )
             result = self.scoring_engine.calculate(predicted, actual)
             self.predictions.upsert_score(
@@ -114,6 +123,41 @@ class PredictionService:
         if match.winner_team_id == match.away_team_id:
             return "away"
         raise ValidationError("Match winner must be one of the match teams.")
+
+    @staticmethod
+    def _validate_predicted_winner(
+        *,
+        match: Match,
+        predicted_home_goals: int,
+        predicted_away_goals: int,
+        predicted_winner_team_id: UUID | None,
+    ) -> None:
+        if predicted_home_goals != predicted_away_goals:
+            if predicted_winner_team_id is not None:
+                raise ValidationError(
+                    "predicted_winner_team_id is only allowed for tied predictions."
+                )
+            return
+        if predicted_winner_team_id is None:
+            raise ValidationError(
+                "predicted_winner_team_id is required for tied predictions."
+            )
+        if predicted_winner_team_id not in {match.home_team_id, match.away_team_id}:
+            raise ValidationError(
+                "predicted_winner_team_id must be one of the match teams."
+            )
+
+    @staticmethod
+    def _winner_side_for_prediction(prediction, match: Match) -> str | None:
+        if prediction.predicted_home_goals != prediction.predicted_away_goals:
+            return None
+        if prediction.predicted_winner_team_id is None:
+            return None
+        if prediction.predicted_winner_team_id == match.home_team_id:
+            return "home"
+        if prediction.predicted_winner_team_id == match.away_team_id:
+            return "away"
+        raise ValidationError("Predicted winner must be one of the match teams.")
 
     def rankings(self, *, pool_id: UUID, user_id: UUID):
         self._require_active_participant(pool_id=pool_id, user_id=user_id)

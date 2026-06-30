@@ -35,13 +35,18 @@ export function MatchPredictionCard({
         {prediction ? (
           <p className="text-sm text-slate-600">
             Your pick: {prediction.predicted_home_goals} - {prediction.predicted_away_goals}
+            {prediction.predicted_winner_team_id
+              ? `, ${predictionWinnerName(match, prediction)} advances`
+              : ""}
             {prediction.score ? `, ${prediction.score.points} pts` : ""}
           </p>
         ) : null}
         {canEdit ? (
           <PredictionForm
             awayTeamName={awayTeamName}
+            awayTeamId={match.away_team?.id ?? null}
             homeTeamName={homeTeamName}
+            homeTeamId={match.home_team?.id ?? null}
             matchId={match.id}
             poolId={poolId}
             prediction={prediction}
@@ -56,7 +61,23 @@ export function MatchPredictionCard({
   );
 }
 
+function predictionWinnerName(match: Match, prediction: Prediction): string {
+  if (prediction.predicted_winner_team_id === match.home_team?.id) {
+    return teamName(match.home_team);
+  }
+  if (prediction.predicted_winner_team_id === match.away_team?.id) {
+    return teamName(match.away_team);
+  }
+  return "Selected team";
+}
+
 function readOnlyMessage(match: Match, prediction?: Prediction): string {
+  if (match.status === "locked") {
+    return "Predictions are closed because this match is locked.";
+  }
+  if (match.status === "in_progress") {
+    return "Predictions are closed while this match is in progress.";
+  }
   if (prediction?.status === "locked") {
     return "Your prediction is locked for this match.";
   }

@@ -122,9 +122,17 @@ class AdminService:
             if next_match is None:
                 raise ValidationError("Configured next match was not found.")
             if assignment.home_team_id is not None:
-                next_match.home_team_id = assignment.home_team_id
+                self._assign_downstream_slot(
+                    next_match=next_match,
+                    slot=NextSlot.HOME,
+                    team_id=assignment.home_team_id,
+                )
             if assignment.away_team_id is not None:
-                next_match.away_team_id = assignment.away_team_id
+                self._assign_downstream_slot(
+                    next_match=next_match,
+                    slot=NextSlot.AWAY,
+                    team_id=assignment.away_team_id,
+                )
 
         self.prediction_service.score_match_predictions(match)
         self.db.commit()
@@ -161,6 +169,91 @@ class AdminService:
         if match.status == MatchStatus.COMPLETED:
             raise ValidationError("Cannot change kickoff time of a completed match.")
         match.scheduled_at = scheduled_at
+        match.sync_source = "admin"
+        match.admin_override = True
+        self.db.commit()
+        return match
+
+    def update_match_teams(
+        self,
+        *,
+        admin_email: str,
+        match_id: UUID,
+        home_team_id: UUID | None = None,
+        away_team_id: UUID | None = None,
+        update_home_team: bool = False,
+        update_away_team: bool = False,
+    ) -> Match:
+        self._require_admin(admin_email)
+        if not update_home_team and not update_away_team:
+            raise ValidationError("At least one team field must be provided.")
+
+        match = self.tournaments.get_match(match_id)
+        if match is None:
+            raise NotFoundError("Match not found.")
+        if match.status == MatchStatus.COMPLETED:
+            raise ValidationError("Cannot change teams of a completed match.")
+
+        new_home_team_id = home_team_id if update_home_team else match.home_team_id
+        new_away_team_id = away_team_id if update_away_team else match.away_team_id
+        if (
+            new_home_team_id is not None
+            and new_away_team_id is not None
+            and new_home_team_id == new_away_team_id
+        ):
+            raise ValidationError("Home and away teams must be different.")
+
+        home_team = None
+        away_team = None
+        if update_home_team:
+            home_team = self._get_team_in_tournament(
+                team_id=home_team_id,
+                tournament_id=match.tournament_id,
+                label="Home team",
+            )
+        if update_away_team:
+            away_team = self._get_team_in_tournament(
+                team_id=away_team_id,
+                tournament_id=match.tournament_id,
+                label="Away team",
+            )
+
+        if update_home_team:
+            match.home_team_id = home_team_id
+            match.home_team = home_team
+        if update_away_team:
+            match.away_team_id = away_team_id
+            match.away_team = away_team
+        match.sync_source = "admin"
+        match.admin_override = True
+
+        self.db.commit()
+        return match
+
+    def update_match_status(
+        self,
+        *,
+        admin_email: str,
+        match_id: UUID,
+        status: MatchStatus,
+    ) -> Match:
+        self._require_admin(admin_email)
+        match = self.tournaments.get_match(match_id)
+        if match is None:
+            raise NotFoundError("Match not found.")
+        if match.status == MatchStatus.COMPLETED:
+            raise ValidationError("Cannot change status of a completed match.")
+        if status == MatchStatus.COMPLETED:
+            raise ValidationError("Use match completion to set completed status.")
+        if status not in {
+            MatchStatus.SCHEDULED,
+            MatchStatus.LOCKED,
+            MatchStatus.IN_PROGRESS,
+            MatchStatus.CANCELLED,
+        }:
+            raise ValidationError("Unsupported match status correction.")
+
+        match.status = status
         match.sync_source = "admin"
         match.admin_override = True
         self.db.commit()
@@ -218,13 +311,27 @@ class AdminService:
         tournament_id: UUID,
         label: str,
     ) -> None:
+        self._get_team_in_tournament(
+            team_id=team_id,
+            tournament_id=tournament_id,
+            label=label,
+        )
+
+    def _get_team_in_tournament(
+        self,
+        *,
+        team_id: UUID | None,
+        tournament_id: UUID,
+        label: str,
+    ):
         if team_id is None:
-            return
+            return None
         team = self.tournaments.get_team(team_id)
         if team is None:
             raise NotFoundError(f"{label} not found.")
         if team.tournament_id != tournament_id:
             raise ValidationError(f"{label} does not belong to this tournament.")
+        return team
 
     def _validate_next_match(
         self,
@@ -239,6 +346,24 @@ class AdminService:
             raise NotFoundError("Next match not found.")
         if next_match.tournament_id != tournament_id:
             raise ValidationError("Next match does not belong to this tournament.")
+
+    @staticmethod
+    def _assign_downstream_slot(
+        *,
+        next_match: Match,
+        slot: NextSlot,
+        team_id: UUID,
+    ) -> None:
+        if slot == NextSlot.HOME:
+            if next_match.home_team_id == team_id:
+                return
+            next_match.home_team_id = team_id
+        else:
+            if next_match.away_team_id == team_id:
+                return
+            next_match.away_team_id = team_id
+        next_match.sync_source = "admin"
+        next_match.admin_override = True
 
     @staticmethod
     def _validate_winner(

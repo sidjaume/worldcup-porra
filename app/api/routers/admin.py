@@ -11,6 +11,8 @@ from app.api.schemas.admin import (
     SyncResult,
     SyncTournamentRequest,
     UpdateKickoffRequest,
+    UpdateMatchStatusRequest,
+    UpdateMatchTeamsRequest,
 )
 from app.api.schemas.tournaments import MatchRead
 from app.config.settings import Settings
@@ -74,6 +76,41 @@ def update_match_kickoff(
         admin_email=current_user.email,
         match_id=match_id,
         scheduled_at=request.scheduled_at,
+    )
+    return serialize_match(match)
+
+
+@router.patch("/matches/{match_id}/teams", response_model=MatchRead)
+def update_match_teams(
+    match_id: UUID,
+    request: UpdateMatchTeamsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(db_dependency),
+    settings: Settings = Depends(settings_dependency),
+) -> MatchRead:
+    match = AdminService(db, settings).update_match_teams(
+        admin_email=current_user.email,
+        match_id=match_id,
+        home_team_id=request.home_team_id,
+        away_team_id=request.away_team_id,
+        update_home_team="home_team_id" in request.model_fields_set,
+        update_away_team="away_team_id" in request.model_fields_set,
+    )
+    return serialize_match(match)
+
+
+@router.patch("/matches/{match_id}/status", response_model=MatchRead)
+def update_match_status(
+    match_id: UUID,
+    request: UpdateMatchStatusRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(db_dependency),
+    settings: Settings = Depends(settings_dependency),
+) -> MatchRead:
+    match = AdminService(db, settings).update_match_status(
+        admin_email=current_user.email,
+        match_id=match_id,
+        status=request.status,
     )
     return serialize_match(match)
 

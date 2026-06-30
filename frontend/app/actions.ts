@@ -73,6 +73,7 @@ export async function submitPredictionAction(
   const matchId = String(formData.get("match_id") ?? "");
   const homeGoals = Number(formData.get("predicted_home_goals"));
   const awayGoals = Number(formData.get("predicted_away_goals"));
+  const predictedWinnerTeamId = readNullableString(formData, "predicted_winner_team_id");
 
   if (!poolId || !matchId || !Number.isInteger(homeGoals) || !Number.isInteger(awayGoals)) {
     return { error: "Enter whole-number scores for both teams." };
@@ -80,10 +81,20 @@ export async function submitPredictionAction(
   if (homeGoals < 0 || awayGoals < 0) {
     return { error: "Scores cannot be negative." };
   }
+  if (homeGoals === awayGoals && !predictedWinnerTeamId) {
+    return { error: "Choose the team you expect to advance." };
+  }
 
   try {
     await withAuthenticatedSession((accessToken) =>
-      submitPrediction(accessToken, poolId, matchId, homeGoals, awayGoals),
+      submitPrediction(
+        accessToken,
+        poolId,
+        matchId,
+        homeGoals,
+        awayGoals,
+        homeGoals === awayGoals ? predictedWinnerTeamId : null,
+      ),
     );
     revalidatePath(`/pools/${poolId}`);
     revalidatePath(`/pools/${poolId}/predictions`);
@@ -150,6 +161,11 @@ export async function updatePoolAction(
   } catch (error) {
     return toActionError(error);
   }
+}
+
+function readNullableString(formData: FormData, name: string): string | null {
+  const value = String(formData.get(name) ?? "").trim();
+  return value || null;
 }
 
 function toActionError(error: unknown): ActionState {

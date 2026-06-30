@@ -34,6 +34,7 @@ pools 1--* pool_participants
 pools 1--* predictions
 matches 1--* predictions
 predictions 1--0..1 prediction_scores
+predictions 0..1--1 teams via predicted_winner_team_id
 matches 0..1--0..1 matches via next_match_id
 ```
 
@@ -43,6 +44,10 @@ Important modeling decisions:
 - Rankings are derived from prediction scores.
 - Invite codes, refresh tokens, and exchange codes are stored only as hashes.
 - Bracket progression is explicit through `matches.next_match_id` and `matches.next_match_slot`.
+- Tied-score predictions store an explicit `predicted_winner_team_id`; non-tied
+  predictions derive the predicted winner from the predicted goals.
+- Manual overrides are match-level for MVP. Provider sync must not mutate
+  provider-managed fields on `matches.admin_override=true`.
 
 ## Current Implementation Snapshot
 
@@ -298,6 +303,7 @@ Stores a user's prediction for a match within a specific pool.
 | match_id | uuid fk matches(id) not null |  |
 | predicted_home_goals | integer not null |  |
 | predicted_away_goals | integer not null |  |
+| predicted_winner_team_id | uuid fk teams(id) nullable | Required only for tied-score predictions |
 | status | prediction_status not null default `editable` | Derived state can be persisted for audit |
 | submitted_at | timestamptz not null |  |
 | updated_at | timestamptz not null |  |
@@ -306,6 +312,10 @@ Constraints:
 
 - Unique `(pool_id, user_id, match_id)`.
 - Check predicted goals are non-negative.
+- `predicted_winner_team_id` is required when predicted goals are tied and must
+  reference the match home or away team. Enforce in service/domain validation.
+- `predicted_winner_team_id` must be null for non-tied predictions. Enforce in
+  service/domain validation.
 - `pool_id` must reference a pool for the same tournament as the match. Enforce in service layer initially; consider a composite FK later if needed.
 - User must be an active participant of the pool. Enforce in service layer.
 
@@ -409,8 +419,10 @@ The scoring engine remains pure domain code. Persistence flow:
    `winner_team_id`.
 2. Prediction service fetches predictions for the match.
 3. Domain scoring engine calculates results. Correct-winner points use the
-   advancing side from `winner_team_id`; exact-score and single-team-goal
-   bonuses use `home_score` and `away_score`.
+   actual advancing side from `winner_team_id` and compare it to either
+   `predicted_winner_team_id` for tied predictions or the goal-implied predicted
+   winner for non-tied predictions. Exact-score and single-team-goal bonuses use
+   `home_score` and `away_score`.
 4. Repository upserts `prediction_scores`.
 5. Ranking endpoint reads aggregate results.
 
@@ -435,3 +447,16 @@ Production migration rules:
 - Backward-compatible migrations are preferred.
 - Never edit applied migration files.
 - Run migrations as a release step before backend deployment or as a controlled Render job.
+
+## Provider And Manual Override Persistence
+
+For the MVP, `matches.admin_override` is intentionally match-level. Any admin
+team correction, status correction, kickoff correction, or result correction
+sets `sync_source='admin'` and `admin_override=true`.
+
+Provider sync must skip provider-managed writes for matches with
+`admin_override=true`. When admin result correction advances a team into a
+downstream match slot, the downstream match must also be marked
+`admin_override=true` if the slot changes. This coarse protection avoids silent
+provider overwrite of manually corrected bracket paths without adding
+field-level override tables before the MVP needs them.
