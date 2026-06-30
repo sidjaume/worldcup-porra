@@ -20,15 +20,12 @@ export default async function RankingsPage({
 
   return (
     <AppShell user={session.user}>
-      <div className="grid gap-6">
+      <div className="mx-auto grid max-w-3xl gap-5">
         <header>
           <p className="text-sm font-semibold uppercase tracking-wide text-grass">
             {pool.name}
           </p>
-          <h1 className="text-3xl font-bold">Rankings</h1>
-          <p className="mt-2 text-slate-600">
-            Rankings are read directly from backend-scored predictions.
-          </p>
+          <h1 className="text-3xl font-black uppercase leading-none">Clasificación</h1>
         </header>
         <PoolSubnav poolId={poolId} poolName={pool.name} />
         <Card>

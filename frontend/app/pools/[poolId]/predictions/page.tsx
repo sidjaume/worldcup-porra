@@ -29,20 +29,33 @@ export default async function PredictionsPage({
     listPredictions(session.accessToken, poolId, { stage: activeStage }),
   ]);
   const predictionMap = predictionsByMatch(predictions);
+  const openMatches = matches.filter((match) => match.status === "scheduled").length;
+  const pendingPredictions = matches.filter(
+    (match) => match.status === "scheduled" && !predictionMap.has(match.id),
+  ).length;
 
   return (
     <AppShell user={session.user}>
-      <div className="grid gap-6">
+      <div className="mx-auto grid max-w-2xl gap-5">
         <header>
           <p className="text-sm font-semibold uppercase tracking-wide text-grass">
             {pool.name}
           </p>
-          <h1 className="text-3xl font-bold">Predictions</h1>
-          <p className="mt-2 text-slate-600">
-            Submit predicted scores before each match locks.
-          </p>
+          <h1 className="text-3xl font-black uppercase leading-none">Partidos</h1>
         </header>
         <PoolSubnav poolId={poolId} poolName={pool.name} />
+        <div className="flex gap-6 overflow-x-auto border-y border-line bg-white/60 px-1 py-3">
+          {[
+            { label: "Abiertos", value: openMatches },
+            { label: "Pendientes", value: pendingPredictions },
+            { label: "Guardadas", value: predictions.length },
+          ].map((item) => (
+            <div className="shrink-0" key={item.label}>
+              <p className="text-xs font-medium text-slate-500">{item.label}</p>
+              <p className="font-mono text-sm font-black text-ink">{item.value}</p>
+            </div>
+          ))}
+        </div>
         <StageTabs activeStage={activeStage} basePath={`/pools/${poolId}/predictions`} />
         <div className="grid gap-4">
           {matches.length ? (

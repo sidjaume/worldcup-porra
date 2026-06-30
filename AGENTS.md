@@ -341,6 +341,19 @@ docs/
 - database.md
 - deployment.md
 - roadmap.md
+- backlog.md
+- backlog_hist.md
+
+Backlog maintenance:
+
+- `docs/backlog.md` must contain only active or unresolved work, such as
+  `IN_PROGRESS`, `PENDING_REVIEW`, `PLANNED`, `BLOCKED`, `DEFERRED`, and active
+  review findings.
+- `docs/backlog_hist.md` is the historical archive for completed work.
+- When a ticket reaches `DONE`, move the full ticket entry from
+  `docs/backlog.md` to `docs/backlog_hist.md` instead of leaving it in the
+  active backlog.
+- Keep `docs/project-status.md` synchronized with both files.
 
 ---
 

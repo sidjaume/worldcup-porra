@@ -5,8 +5,8 @@ const source = readFileSync(new URL("./RankingTable.tsx", import.meta.url), "utf
 
 describe("RankingTable", () => {
   it("uses mobile cards and clear ranking labels", () => {
-    expect(source).toContain("md:hidden");
-    expect(source).toContain("md:block");
+    expect(source).toContain("lg:hidden");
+    expect(source).toContain("lg:block");
     expect(source).toContain("Exact scores");
     expect(source).toContain("Correct winners");
     expect(source).toContain("Predictions");

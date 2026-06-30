@@ -4,7 +4,7 @@ Last updated: 2026-06-30
 
 ## Current Milestone
 
-Milestone 4: Deployed MVP is in progress.
+Milestone 4: Deployed MVP is operational with result-sync follow-up pending.
 
 The repository now contains a working FastAPI backend, Next.js frontend, PostgreSQL schema/migration, Docker Compose local deployment, Render blueprint, and CI workflow. The canonical architecture/API/database/roadmap docs have been reconciled with that implementation state. REV-002's split follow-up tasks were implemented, reviewed, and recorded in the backlog as historical follow-up work. DATA-EPIC-001 has backend and sync-operations slices implemented and approved by the independent Reviewer gate.
 
@@ -49,6 +49,7 @@ The repository now contains a working FastAPI backend, Next.js frontend, Postgre
 - BE-011 match display metadata and live-minute contract approved with comments by independent Reviewer gate.
 - FE-010 World Cup visual refresh and match state cards approved with comments by independent Reviewer gate.
 - BE-012 secure external scheduler sync endpoint approved with comments by independent Reviewer gate.
+- DEPLOY-001 production Render + Neon deployment completed.
 
 ## Verification Evidence
 
@@ -184,17 +185,15 @@ None.
 
 ## Planned
 
-None.
+- BE-013 provider result sync progression conflict resolution.
 
 ## Blocked
 
-- DEPLOY-001 production deployment closure is blocked until the provider
-  scheduler configuration/decision is verified. Automated production
-  checks now pass for Render health, CORS, OpenAPI contract, Neon connectivity,
-  and Alembic version; browser Google OAuth and authenticated pool loading have
-  also been verified, and the admin UI route loads after frontend redeploy.
 - Local Google OAuth testing is blocked unless Google OAuth credentials are configured. The local backend-owned callback is documented consistently as `http://localhost:8000/api/v1/auth/google/callback`.
-- Provider-backed sync execution for DATA-EPIC-001 still depends on the project owner deciding provider budget/licensing constraints and supplying account credentials.
+- Automated provider result sync remains disabled only as a temporary safety
+  measure until BE-013 resolves provider completed-match progression conflicts.
+  The product target is fully automatic result ingestion, scoring, and bracket
+  progression.
 
 ## Pending Review
 
@@ -216,7 +215,7 @@ backlog.
 
 ## Production Status
 
-Partially verified production deployment on Render + Neon.
+Verified production deployment on Render + Neon.
 
 - Backend health: `https://worldcup-porra.onrender.com/health` returned
   `{"status":"ok","database":"ok"}`.
@@ -224,12 +223,15 @@ Partially verified production deployment on Render + Neon.
   `{"status":"ok"}`.
 - Frontend root returned `200` HTML.
 - Backend OpenAPI returned `200` and includes `predicted_winner_team_id`,
-  `/api/v1/admin/matches/{match_id}/teams`, and
-  `/api/v1/admin/matches/{match_id}/status`.
+  `/api/v1/admin/matches/{match_id}/teams`,
+  `/api/v1/admin/matches/{match_id}/status`, `/api/v1/ops/sync`, and
+  `MatchRead.live_minute`.
+- Unauthenticated `/api/v1/ops/sync` returned the expected standard `401`,
+  proving the deployed scheduler endpoint exists and requires `CRON_SECRET`.
 - Google OAuth start redirects to Google with the production backend callback.
 - CORS preflight from the frontend origin to the backend passed.
 - Neon Alembic version is `20260630_0004`; production data includes 1
-  tournament, 64 teams, 31 matches, 3 pools, and 2 users. The 31 matches are
+  tournament, 64 teams, 31 matches, 5 pools, and 3 users. The 31 matches are
   synced from the provider; 32 provider teams are loaded and 32 old seed teams
   are now unreferenced.
 - Browser login with Google and authenticated pool loading were verified by
@@ -242,19 +244,19 @@ Partially verified production deployment on Render + Neon.
   created 32 provider teams and `matches` updated 31 matches with provider
   kickoff/team data. Result sync was not enabled because current provider
   completed-match progression conflicts with the seeded bracket links and must
-  remain fail-closed until reviewed.
-- Provider adapter/sync hotfix for the current provider response shape is
-  approved by Reviewer after rework. Full backend checks passed with 100 tests
-  and Ruff. This backend patch must be deployed before using the production
-  admin sync button or an automated scheduler.
-- Remaining production smoke: provider scheduler configuration/decision.
+  remain fail-closed until BE-013.
+- cron-job.org external scheduler was configured against
+  `POST https://worldcup-porra.onrender.com/api/v1/ops/sync` with
+  `TOURNAMENT_SYNC_MODE=matches`; project owner verified a successful run with
+  `errors=[]` and zero changes, indicating provider fixture data was already
+  current.
+- Completed match results should become automatic after BE-013. Admin entry
+  remains a recovery fallback, not the target operating mode.
 
 ## Next Recommended Task
 
-Deploy the backend/frontend approved changes, then configure an external HTTP
-scheduler with `CRON_SECRET`, `TOURNAMENT_SYNC_TOURNAMENT_ID`,
-`TOURNAMENT_SYNC_YEAR=2026`, and an initial `TOURNAMENT_SYNC_MODE=matches`.
+Resolve BE-013 so the external scheduler can move from `matches` to the
+approved automatic result-sync mode.
 
-Rationale: The app now has real provider fixture data in production, so the next
-highest-value follow-up is making sync automatic without giving the scheduler
-direct database credentials.
+Rationale: Deployment, fixture sync, and external scheduling are operational.
+The remaining tournament-day risk is completed-result ingestion/progression.

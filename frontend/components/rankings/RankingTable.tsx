@@ -7,17 +7,29 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
 
   return (
     <>
-      <div className="grid gap-3 md:hidden">
-        {rows.map((row) => (
-          <article className="rounded-lg border border-line bg-white p-4" key={row.user_id}>
+      <div className="grid gap-3 lg:hidden">
+        {rows.map((row, index) => (
+          <article
+            className={`rounded-lg border p-4 ${
+              row.rank === 1
+                ? "border-grass/30 bg-mint"
+                : "border-line bg-white"
+            }`}
+            key={row.user_id}
+          >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Rank {row.rank}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-white text-sm font-black text-slate-600">
+                  {index < 3 ? ["1", "2", "3"][index] : `#${row.rank}`}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Rank {row.rank}
+                  </p>
                 <h3 className="truncate text-base font-bold">{row.display_name}</h3>
+                </div>
               </div>
-              <p className="rounded-md bg-mint px-3 py-1 text-sm font-bold text-grass">
+              <p className="rounded-md bg-white px-3 py-1 text-sm font-bold text-grass">
                 {row.total_points} pts
               </p>
             </div>
@@ -40,7 +52,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
           </article>
         ))}
       </div>
-      <div className="hidden overflow-hidden rounded-lg border border-line md:block">
+      <div className="hidden overflow-hidden rounded-lg border border-line lg:block">
         <table className="w-full border-collapse bg-white text-left text-sm">
         <thead className="bg-mint text-ink">
           <tr>

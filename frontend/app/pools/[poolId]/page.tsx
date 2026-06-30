@@ -33,11 +33,11 @@ export default async function PoolDetailPage({
 
   return (
     <AppShell user={session.user}>
-      <div className="grid gap-6">
+      <div className="mx-auto grid max-w-3xl gap-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-grass">Pool</p>
-            <h1 className="text-3xl font-bold">{pool.name}</h1>
+            <h1 className="text-3xl font-black uppercase leading-none">{pool.name}</h1>
             <p className="mt-2 text-slate-600">{pool.participant_count} participants</p>
           </div>
         </header>

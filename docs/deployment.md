@@ -74,14 +74,17 @@ provisions only the backend and frontend web services so the free-plan path
 cannot accidentally create an unsupported scheduled service.
 
 For the current free-plan path, run the sync command from a trusted local or
-operator-controlled machine against the Neon `DATABASE_URL` on a schedule:
+operator-controlled machine against the Neon `DATABASE_URL` on a schedule. Use
+`matches` only as the temporary safe mode until BE-013 approves automatic result
+sync:
 
 ```sh
-python -m scripts.sync_knockout_fixtures "$TOURNAMENT_SYNC_TOURNAMENT_ID" --year "${TOURNAMENT_SYNC_YEAR:-2026}" --mode "${TOURNAMENT_SYNC_MODE:-all}"
+python -m scripts.sync_knockout_fixtures "$TOURNAMENT_SYNC_TOURNAMENT_ID" --year "${TOURNAMENT_SYNC_YEAR:-2026}" --mode "${TOURNAMENT_SYNC_MODE:-matches}"
 ```
 
-Admin-triggered sync and manual corrections remain available in the app as
-fallbacks.
+Admin-triggered sync and manual result/correction flows remain available in the
+app as recovery tools. They are not the target operating mode for completed
+match results.
 
 An external HTTP scheduler can also keep the Render backend as the only system
 that touches Neon. Configure `CRON_SECRET`, `TOURNAMENT_SYNC_TOURNAMENT_ID`,
@@ -95,9 +98,10 @@ curl -X POST "https://<backend-render-host>/api/v1/ops/sync" \
 
 This request wakes a sleeping Render free web service and asks the backend to
 run the configured sync. It avoids giving the scheduler direct database access.
-For the current provider-result conflict, prefer `TOURNAMENT_SYNC_MODE=matches`
-after provider teams are loaded, until result progression is intentionally
-enabled.
+For the current provider-result conflict, use `TOURNAMENT_SYNC_MODE=matches`
+after provider teams are loaded. Do not enable `results` or `all` for scheduled
+production runs until BE-013 is completed and reviewed; after approval, switch
+the scheduler to the documented automatic result-sync mode.
 
 Render cron is an optional convenience for a later paid/eligible Render plan.
 When that path is intentionally adopted, add a separate Render cron service that
@@ -112,7 +116,8 @@ variables in the scheduler environment:
 - `TOURNAMENT_SYNC_TOURNAMENT_ID`: internal tournament UUID for the production
   tournament row.
 - `TOURNAMENT_SYNC_YEAR`: normally `2026`.
-- `TOURNAMENT_SYNC_MODE`: normally `all`; use `results` for result-only retry.
+- `TOURNAMENT_SYNC_MODE`: temporary production safe mode is `matches`. After
+  BE-013 approval, use the documented automatic result-sync mode.
 - `TOURNAMENT_PROVIDER_BASE_URL`: provider or self-hosted adapter base URL.
 - `TOURNAMENT_PROVIDER_API_KEY`: secret provider key when required.
 - `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS`: request timeout, default `10`.
@@ -144,7 +149,7 @@ One-time PowerShell smoke run from the repository root:
 $env:DATABASE_URL = "<neon-postgresql-url>"
 $env:TOURNAMENT_SYNC_TOURNAMENT_ID = "<production-tournament-uuid>"
 $env:TOURNAMENT_SYNC_YEAR = "2026"
-$env:TOURNAMENT_SYNC_MODE = "all"
+$env:TOURNAMENT_SYNC_MODE = "matches"
 $env:TOURNAMENT_PROVIDER_BASE_URL = "<provider-or-self-hosted-base-url>"
 $env:TOURNAMENT_PROVIDER_API_KEY = "<provider-key-if-required>"
 $env:TOURNAMENT_PROVIDER_TIMEOUT_SECONDS = "10"
@@ -187,7 +192,7 @@ TOURNAMENT_SYNC_TOURNAMENT_ID="$TOURNAMENT_SYNC_TOURNAMENT_ID" \
   ./.venv/bin/python -m scripts.sync_knockout_fixtures \
   "$TOURNAMENT_SYNC_TOURNAMENT_ID" \
   --year "${TOURNAMENT_SYNC_YEAR:-2026}" \
-  --mode "${TOURNAMENT_SYNC_MODE:-all}"
+  --mode "${TOURNAMENT_SYNC_MODE:-matches}"
 ```
 
 Required local scheduler variables:
@@ -195,7 +200,7 @@ Required local scheduler variables:
 - `DATABASE_URL`: Neon database URL.
 - `TOURNAMENT_SYNC_TOURNAMENT_ID`: internal tournament UUID.
 - `TOURNAMENT_SYNC_YEAR`: normally `2026`.
-- `TOURNAMENT_SYNC_MODE`: normally `all`.
+- `TOURNAMENT_SYNC_MODE`: `matches` until BE-013; then the approved automatic result-sync mode.
 - `TOURNAMENT_PROVIDER_BASE_URL`.
 - `TOURNAMENT_PROVIDER_API_KEY` if required by the provider.
 - `TOURNAMENT_PROVIDER_TIMEOUT_SECONDS`.
@@ -216,8 +221,9 @@ Expected logs:
 Retry and disable guidance:
 
 - For transient provider failures, rerun the task once after checking logs.
-- If teams and fixture import are healthy but result sync failed, retry with
-  `TOURNAMENT_SYNC_MODE=results`.
+- If teams and fixture import are healthy but result sync failed, keep the
+  scheduler on `matches` and enter completed results through admin until BE-013
+  approves automated result sync.
 - Disable or pause the scheduled task before investigating repeated failures,
   bad upstream data, or suspected secret exposure.
 - Use admin sync/manual correction endpoints while the scheduler is paused.
@@ -281,7 +287,7 @@ $env:TOURNAMENT_SYNC_TOURNAMENT_ID = "<local-tournament-uuid>"
 docker compose --profile tools run --rm fixture-sync
 ```
 
-For result-only retry:
+For result-sync validation after BE-013 approval:
 
 ```powershell
 $env:TOURNAMENT_SYNC_MODE = "results"
@@ -331,8 +337,8 @@ Open:
 
 1. Inspect the scheduler logs for the printed error summary.
 2. Confirm no secrets or raw provider credentials are present in logs.
-3. Retry with `TOURNAMENT_SYNC_MODE=results` if fixture/team import is already
-   healthy and only result sync failed.
+3. Keep the scheduler on `TOURNAMENT_SYNC_MODE=matches` while investigating
+   result-sync failures.
 4. Use admin match completion or kickoff correction as fallback when provider
    data is unavailable or wrong.
 

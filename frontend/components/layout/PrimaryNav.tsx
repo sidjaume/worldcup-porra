@@ -23,7 +23,7 @@ export function PrimaryNav() {
             className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition ${
               isActive
                 ? "bg-grass text-white"
-                : "text-ink hover:bg-mint hover:text-grass"
+                : "text-slate-600 hover:bg-mint hover:text-ink"
             }`}
             href={item.href}
             key={item.href}

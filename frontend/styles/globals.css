@@ -4,8 +4,8 @@
 
 :root {
   color-scheme: light;
-  background: #f7f4ec;
-  color: #17202a;
+  background: #f6f8f4;
+  color: #020617;
 }
 
 * {
@@ -19,12 +19,32 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background:
-    linear-gradient(135deg, rgba(199, 62, 53, 0.08), rgba(31, 102, 177, 0) 34%),
-    linear-gradient(215deg, rgba(18, 107, 69, 0.1), rgba(247, 244, 236, 0) 38%),
-    linear-gradient(180deg, #fbf8ef 0%, #f7f4ec 48%, #eef4f0 100%);
-  color: #17202a;
+  background: #f6f8f4;
+  color: #020617;
+  font-family:
+    Outfit,
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-feature-settings: "ss01" 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family:
+    "Barlow Condensed",
+    "Arial Narrow",
+    Outfit,
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0;
 }
 
 a {
@@ -39,6 +59,6 @@ select {
 }
 
 :where(a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
-  outline: 3px solid #126b45;
+  outline: 3px solid #12c353;
   outline-offset: 2px;
 }

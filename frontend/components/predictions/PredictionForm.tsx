@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
-import { Send } from "lucide-react";
+import { Check, Send } from "lucide-react";
 import { submitPredictionAction } from "@/app/actions";
 import { Button } from "@/components/ui/Button";
 import { Field, FormMessage, FormSuccess, SelectInput, TextInput } from "@/components/ui/Field";
@@ -43,11 +43,11 @@ export function PredictionForm({
     <form
       action={action}
       aria-describedby={describedBy}
-      className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      className="grid gap-3 rounded-md border border-line bg-slate-50 p-3 sm:grid-cols-[auto_auto_auto] sm:items-end"
     >
       <input name="pool_id" type="hidden" value={poolId} />
       <input name="match_id" type="hidden" value={matchId} />
-      <Field label={`${homeTeamName} goals`}>
+      <Field className="min-w-0" label={`${homeTeamName} goals`}>
         <TextInput
           aria-describedby={describedBy}
           aria-invalid={state.error ? true : undefined}
@@ -55,13 +55,14 @@ export function PredictionForm({
           min={0}
           name="predicted_home_goals"
           onChange={(event) => setHomeGoals(event.target.value)}
-          placeholder={homeTeamName}
+          className="h-11 w-20 text-center text-lg font-black"
+          placeholder="0"
           required
           type="number"
           value={homeGoals}
         />
       </Field>
-      <Field label={`${awayTeamName} goals`}>
+      <Field className="min-w-0" label={`${awayTeamName} goals`}>
         <TextInput
           aria-describedby={describedBy}
           aria-invalid={state.error ? true : undefined}
@@ -69,15 +70,16 @@ export function PredictionForm({
           min={0}
           name="predicted_away_goals"
           onChange={(event) => setAwayGoals(event.target.value)}
-          placeholder={awayTeamName}
+          className="h-11 w-20 text-center text-lg font-black"
+          placeholder="0"
           required
           type="number"
           value={awayGoals}
         />
       </Field>
-      <Button disabled={pending} type="submit">
-        <Send aria-hidden="true" size={16} />
-        {pending ? "Saving" : "Save"}
+      <Button className="h-11" disabled={pending} type="submit">
+        {state.ok ? <Check aria-hidden="true" size={16} /> : <Send aria-hidden="true" size={16} />}
+        {pending ? "Saving" : state.ok ? "Saved" : "Save"}
       </Button>
       {isTied ? (
         hasKnownTeams ? (

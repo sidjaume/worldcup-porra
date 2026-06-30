@@ -22,15 +22,15 @@ describe("MatchPredictionCard", () => {
     expect(source).toContain("team?.flag_url");
     expect(source).toContain('aria-label={`${name} flag`}');
     expect(source).toContain("teamShortName(team)");
-    expect(source).toContain("size-9");
+    expect(source).toContain("size-11");
   });
 
   it("shows final and live match state separately from scheduled vs", () => {
     expect(source).toContain('match.status === "completed"');
-    expect(source).toContain("Final result");
+    expect(source).toContain("Final");
     expect(source).toContain("<LiveBadge minute={match.live_minute} />");
     expect(source).toContain("Live{minute !== null");
-    expect(source).toContain("Scheduled");
+    expect(source).toContain("VS");
   });
 
   it("requires an advancing winner only when entered prediction goals are tied", () => {
